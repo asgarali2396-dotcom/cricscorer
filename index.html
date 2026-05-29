@@ -4,19 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JAFAR's CricScorer</title>
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#4338ca">
-    <link rel="apple-touch-icon" href="./icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Mobile Viewport Fix */
         body {
             height: 100vh; 
             height: 100dvh; 
             overflow: hidden; 
         }
-
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         ::-webkit-scrollbar { width: 6px; }
@@ -54,7 +49,10 @@
     <main class="flex-1 overflow-y-auto p-4 md:p-8 relative" id="app-container">
         
         <div id="view-setup" class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6 fade-in">
-            <h2 class="text-2xl font-bold text-slate-700 mb-6 border-b pb-2">New Match Setup</h2>
+            <div class="flex justify-between items-center mb-6 border-b pb-2">
+                <h2 class="text-2xl font-bold text-slate-700">New Match Setup</h2>
+                <button onclick="showMatchHistory()" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 px-4 rounded-lg font-bold transition"><i class="fas fa-history mr-2"></i>History</button>
+            </div>
             <div class="space-y-6">
                 <div>
                     <label class="block text-sm font-semibold text-slate-600 mb-2">Match Format</label>
@@ -83,10 +81,19 @@
                         <input type="text" id="team-b-name" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value="Team B">
                     </div>
                 </div>
-                <button onclick="goToSquadSetup()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors mt-4">
+                <button onclick="goToSquadSetup()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors mt-4 shadow-md">
                     Next: Enter Squads <i class="fas fa-arrow-right ml-2"></i>
                 </button>
             </div>
+        </div>
+
+        <div id="view-history" class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6 hidden fade-in">
+            <div class="flex justify-between items-center mb-6 border-b pb-2">
+                <h2 class="text-2xl font-bold text-slate-700">Match History</h2>
+                <button onclick="switchView('view-setup')" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 px-4 rounded-lg font-bold transition"><i class="fas fa-times mr-2"></i>Close</button>
+            </div>
+            <div id="history-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                </div>
         </div>
 
         <div id="view-squads" class="max-w-4xl mx-auto hidden fade-in">
@@ -215,7 +222,7 @@
                         <button onclick="scoreExtra('NB')" class="bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold transition">No Ball (NB)</button>
                         <button onclick="scoreExtra('B')" class="bg-slate-600 hover:bg-slate-500 py-3 rounded-lg font-bold transition">Bye (B)</button>
                         <button onclick="scoreExtra('LB')" class="bg-slate-600 hover:bg-slate-500 py-3 rounded-lg font-bold transition">Leg Bye (LB)</button>
-                        <button onclick="scoreWicket()" class="col-span-2 bg-rose-600 hover:bg-rose-500 py-4 rounded-xl font-bold text-xl tracking-widest transition shadow-lg mt-2">WICKET</button>
+                        <button onclick="triggerWicketDetails()" class="col-span-2 bg-rose-600 hover:bg-rose-500 py-4 rounded-xl font-bold text-xl tracking-widest transition shadow-lg mt-2">WICKET</button>
                     </div>
                     <div class="mt-auto grid grid-cols-2 gap-3 border-t border-slate-700 pt-4">
                         <button onclick="swapStrike()" class="bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-sm font-semibold"><i class="fas fa-exchange-alt mr-2"></i>Swap Strike</button>
@@ -314,12 +321,41 @@
             score: { runs: 0, wickets: 0, validBalls: 0 },
             strikerIdx: null, nonStrikerIdx: null, bowlerIdx: null,
             overLog: [], history: [], modalState: '', 
-            needsNewBowler: false, pendingOverEndSwap: false
+            needsNewBowler: false, pendingOverEndSwap: false,
+            firstInningsData: null, savedToHistory: false
         };
 
         function switchView(viewId) {
-            ['view-setup', 'view-squads', 'view-toss', 'view-match', 'view-scorecard'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            ['view-setup', 'view-squads', 'view-toss', 'view-match', 'view-scorecard', 'view-history'].forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        // ================= HISTORY LOGIC =================
+        function showMatchHistory() {
+            switchView('view-history');
+            const historyList = document.getElementById('history-list');
+            const historyData = JSON.parse(localStorage.getItem('jafarCricHistory')) || [];
+
+            if (historyData.length === 0) {
+                historyList.innerHTML = '<div class="text-center text-slate-400 italic py-8">No past matches recorded yet. Complete a match to see it here!</div>';
+                return;
+            }
+
+            historyList.innerHTML = historyData.map(match => `
+                <div class="border border-slate-200 rounded-xl p-4 shadow-sm bg-slate-50 relative overflow-hidden">
+                    <div class="absolute right-0 top-0 w-2 h-full bg-indigo-500"></div>
+                    <p class="text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider">${match.date}</p>
+                    <div class="grid grid-cols-3 gap-2 text-sm mb-3">
+                        <div class="text-right font-bold text-slate-700">${match.team1}</div>
+                        <div class="text-center text-slate-400 italic">vs</div>
+                        <div class="font-bold text-slate-700">${match.team2}</div>
+                        <div class="text-right text-indigo-600 font-bold">${match.score1}</div>
+                        <div></div>
+                        <div class="text-indigo-600 font-bold">${match.score2}</div>
+                    </div>
+                    <div class="text-center font-bold text-emerald-600 bg-emerald-50 py-1 rounded border border-emerald-100">${match.result}</div>
+                </div>
+            `).join('');
         }
 
         function toggleCustomOvers() {
@@ -358,7 +394,7 @@
                 for(let i=0; i<matchData.teamSize; i++) {
                     matchData.teams[teamKey].players.push({
                         name: document.getElementById(`player-${teamKey}-${i}`).value || `Player ${i+1}`,
-                        runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, hasBatted: false,
+                        runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, hasBatted: false, dismissalText: '',
                         bowlRuns: 0, bowlBalls: 0, bowlWickets: 0
                     });
                 }
@@ -439,9 +475,39 @@
                 const exclude = matchData.bowlerIdx !== null ? [matchData.bowlerIdx] : [];
                 html += createDropdown('New Bowler', 'sel-next-bowl', getBowlTeam(), exclude);
             }
+            else if (state === 'WICKET_DETAILS') {
+                title.innerText = 'Wicket Details';
+                html += `
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">How did they get out?</label>
+                        <select id="wicket-type" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-rose-500" onchange="toggleFielderVisibility()">
+                            <option value="Bowled">Bowled</option>
+                            <option value="Caught">Caught</option>
+                            <option value="LBW">LBW</option>
+                            <option value="Run Out">Run Out</option>
+                            <option value="Stumped">Stumped</option>
+                            <option value="Hit Wicket">Hit Wicket</option>
+                        </select>
+                    </div>
+                    <div id="fielder-selector" class="mb-4" style="display:none;">
+                        ${createDropdown('Select Fielder involved', 'wicket-fielder', getBowlTeam(), [])}
+                    </div>
+                `;
+            }
 
             content.innerHTML = html;
             modal.classList.remove('hidden');
+        }
+
+        // Logic to show/hide the Fielder dropdown based on Wicket Type
+        function toggleFielderVisibility() {
+            const type = document.getElementById('wicket-type').value;
+            const fielderDiv = document.getElementById('fielder-selector');
+            if (['Caught', 'Run Out', 'Stumped'].includes(type)) {
+                fielderDiv.style.display = 'block';
+            } else {
+                fielderDiv.style.display = 'none';
+            }
         }
 
         function createDropdown(label, id, teamArray, excludeIndexes = [], mustNotHaveBatted = false) {
@@ -450,7 +516,7 @@
                 if (excludeIndexes.includes(index) || (mustNotHaveBatted && p.hasBatted)) return;
                 options += `<option value="${index}">${p.name}</option>`;
             });
-            return `<div class="mb-4"><label class="block text-sm font-semibold text-slate-600 mb-1">${label}</label><select id="${id}" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">${options}</select></div>`;
+            return `<div class="mb-2"><label class="block text-sm font-semibold text-slate-600 mb-1">${label}</label><select id="${id}" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">${options}</select></div>`;
         }
 
         function handleModalConfirm() {
@@ -492,6 +558,51 @@
                 const nb = document.getElementById('sel-next-bowl').value;
                 if(!nb) return alert("Please select a bowler.");
                 matchData.bowlerIdx = parseInt(nb);
+            }
+            else if (matchData.modalState === 'WICKET_DETAILS') {
+                const type = document.getElementById('wicket-type').value;
+                const fielderIdx = document.getElementById('wicket-fielder').value;
+                const bowler = getBowlTeam()[matchData.bowlerIdx];
+                const striker = getBatTeam()[matchData.strikerIdx];
+
+                if (['Caught', 'Run Out', 'Stumped'].includes(type) && fielderIdx === "") {
+                    return alert("Please select the fielder involved in the dismissal.");
+                }
+
+                saveState(); // Save state for undo BEFORE committing wicket
+                
+                let disText = '';
+                let fName = fielderIdx !== "" ? getBowlTeam()[fielderIdx].name : '';
+
+                if (type === 'Bowled') disText = `b ${bowler.name}`;
+                else if (type === 'Caught') disText = `c ${fName} b ${bowler.name}`;
+                else if (type === 'LBW') disText = `lbw b ${bowler.name}`;
+                else if (type === 'Run Out') disText = `run out (${fName})`;
+                else if (type === 'Stumped') disText = `st ${fName} b ${bowler.name}`;
+                else if (type === 'Hit Wicket') disText = `hit wicket b ${bowler.name}`;
+
+                striker.dismissalText = disText;
+                striker.isOut = true;
+                striker.balls += 1;
+                
+                bowler.bowlBalls += 1;
+                if (type !== 'Run Out') bowler.bowlWickets += 1; // Run outs do not credit the bowler
+                
+                matchData.score.wickets += 1;
+                matchData.score.validBalls += 1;
+                logBall('W', 'bg-rose-500 text-white font-bold');
+
+                document.getElementById('selection-modal').classList.add('hidden');
+                matchData.modalState = '';
+
+                if (checkMatchWinCondition()) return; 
+                
+                if (matchData.score.wickets >= matchData.teamSize - 1) {
+                    updateDashboard(); 
+                    return setTimeout(() => triggerInningsTransition(), 100); 
+                }
+                
+                return processBallOutcome(true); // Proceed to next batsman
             }
 
             document.getElementById('selection-modal').classList.add('hidden');
@@ -542,26 +653,10 @@
             processBallOutcome(false);
         }
 
-        function scoreWicket() {
+        // Changed from scoreWicket to triggerWicketDetails to open the Advanced Wicket Modal
+        function triggerWicketDetails() {
             if(isLocked()) return;
-            saveState();
-            
-            getBatTeam()[matchData.strikerIdx].balls += 1; 
-            getBatTeam()[matchData.strikerIdx].isOut = true;
-            getBowlTeam()[matchData.bowlerIdx].bowlBalls += 1; 
-            getBowlTeam()[matchData.bowlerIdx].bowlWickets += 1;
-            
-            matchData.score.wickets += 1;
-            matchData.score.validBalls += 1;
-            logBall('W', 'bg-rose-500 text-white font-bold');
-
-            if (checkMatchWinCondition()) return; 
-            
-            if (matchData.score.wickets >= matchData.teamSize - 1) {
-                updateDashboard(); 
-                return setTimeout(() => triggerInningsTransition(), 100); 
-            }
-            processBallOutcome(true); 
+            openModal('WICKET_DETAILS');
         }
 
         function processBallOutcome(wicketFell) {
@@ -594,6 +689,13 @@
             if (matchData.innings === 1) {
                 alert(`Innings Over! Target for ${matchData.teams[matchData.bowlingTeam].name} is ${matchData.score.runs + 1}`);
                 
+                // Save First Innings Summary specifically for History before resetting
+                matchData.firstInningsData = {
+                    team: matchData.teams[matchData.battingTeam].name,
+                    score: `${matchData.score.runs}/${matchData.score.wickets}`,
+                    overs: formatOvers(matchData.score.validBalls)
+                };
+
                 matchData.target = matchData.score.runs + 1;
                 const temp = matchData.battingTeam;
                 matchData.battingTeam = matchData.bowlingTeam;
@@ -632,6 +734,24 @@
             document.getElementById('match-over-overlay').classList.add('flex');
             document.getElementById('match-result-text').innerText = resultMessage;
             updateDashboard();
+
+            // ================= SAVE MATCH TO LOCAL STORAGE HISTORY =================
+            if (!matchData.savedToHistory) {
+                matchData.savedToHistory = true; // Prevent duplicate saves if endMatch runs twice
+                let historyArray = JSON.parse(localStorage.getItem('jafarCricHistory')) || [];
+                
+                const matchSummary = {
+                    date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                    team1: matchData.firstInningsData ? matchData.firstInningsData.team : matchData.teams[matchData.battingTeam].name,
+                    score1: matchData.firstInningsData ? `${matchData.firstInningsData.score} (${matchData.firstInningsData.overs})` : `${matchData.score.runs}/${matchData.score.wickets} (${formatOvers(matchData.score.validBalls)})`,
+                    team2: matchData.firstInningsData ? matchData.teams[matchData.battingTeam].name : '-',
+                    score2: matchData.firstInningsData ? `${matchData.score.runs}/${matchData.score.wickets} (${formatOvers(matchData.score.validBalls)})` : '-',
+                    result: resultMessage
+                };
+
+                historyArray.unshift(matchSummary); // Add newest match to the top of the list
+                localStorage.setItem('jafarCricHistory', JSON.stringify(historyArray));
+            }
         }
 
         function swapStrike(manual = true) {
@@ -697,7 +817,9 @@
 
             document.getElementById('batsmen-tbody').innerHTML = `
                 <tr class="bg-indigo-50/50">
-                    <td class="p-3 font-bold text-indigo-700">${striker.name} <span class="text-rose-500">*</span></td>
+                    <td class="p-3">
+                        <span class="font-bold text-indigo-700">${striker.name}</span> <span class="text-rose-500">*</span>
+                    </td>
                     <td class="p-3 text-right font-bold">${striker.runs}</td>
                     <td class="p-3 text-right">${striker.balls}</td>
                     <td class="p-3 text-right hidden sm:table-cell">${striker.fours}</td>
@@ -705,7 +827,9 @@
                     <td class="p-3 text-right text-slate-500">${calcSR(striker.runs, striker.balls)}</td>
                 </tr>
                 <tr>
-                    <td class="p-3 font-medium text-slate-700">${nonStriker.name}</td>
+                    <td class="p-3">
+                        <span class="font-medium text-slate-700">${nonStriker.name}</span>
+                    </td>
                     <td class="p-3 text-right font-bold">${nonStriker.runs}</td>
                     <td class="p-3 text-right">${nonStriker.balls}</td>
                     <td class="p-3 text-right hidden sm:table-cell">${nonStriker.fours}</td>
@@ -761,6 +885,7 @@
                 document.getElementById('mom-container').classList.remove('hidden');
             }
 
+            // Populate the detailed tables with new Dismissal Text logic
             ['A', 'B'].forEach(teamKey => {
                 const team = matchData.teams[teamKey];
                 document.getElementById(`scorecard-team-${teamKey.toLowerCase()}-name`).innerText = team.name;
@@ -768,7 +893,18 @@
                 let batHtml = '';
                 team.players.forEach(p => {
                     if (p.hasBatted) {
-                        batHtml += `<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="py-2 font-medium">${p.name} ${p.isOut ? '' : '<span class="text-rose-500">*</span>'}</td><td class="text-right font-bold">${p.runs}</td><td class="text-right">${p.balls}</td><td class="text-right">${p.fours}</td><td class="text-right">${p.sixes}</td><td class="text-right text-slate-500">${calcSR(p.runs, p.balls)}</td></tr>`;
+                        batHtml += `
+                        <tr class="border-b border-slate-100 hover:bg-slate-50">
+                            <td class="py-2">
+                                <span class="font-medium">${p.name}</span> ${p.isOut ? '' : '<span class="text-rose-500">*</span>'}
+                                ${p.isOut ? `<br><span class="text-xs text-slate-500 font-normal italic">${p.dismissalText}</span>` : '<br><span class="text-xs text-emerald-500 font-normal italic">not out</span>'}
+                            </td>
+                            <td class="text-right font-bold align-top pt-2">${p.runs}</td>
+                            <td class="text-right align-top pt-2">${p.balls}</td>
+                            <td class="text-right align-top pt-2">${p.fours}</td>
+                            <td class="text-right align-top pt-2">${p.sixes}</td>
+                            <td class="text-right text-slate-500 align-top pt-2">${calcSR(p.runs, p.balls)}</td>
+                        </tr>`;
                     }
                 });
                 document.getElementById(`scorecard-${teamKey.toLowerCase()}-bat`).innerHTML = batHtml || '<tr><td colspan="6" class="py-4 text-center italic text-slate-400">Did not bat</td></tr>';
@@ -783,17 +919,5 @@
             });
         }
     </script>
-    <script>
-        // Register the Service Worker for PWA installation
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('App successfully registered as a PWA.'))
-                    .catch(err => console.log('PWA registration failed:', err));
-            });
-        }
-    </script>
-</body>
-</html>
 </body>
 </html>
