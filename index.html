@@ -1158,5 +1158,13 @@
             });
         }
     </script>
+    // Prevent accidental tab closure during an active match
+window.addEventListener('beforeunload', function (e) {
+    if (matchData && !matchData.matchIsOver && matchData.strikerIdx !== null) {
+        // Cancel the event and show a warning
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 </body>
 </html>
