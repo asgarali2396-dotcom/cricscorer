@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JAFAR's CricScorer</title>
+    <!-- Tailwind & Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- HTML2Canvas for exporting images -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
+    <!-- PWA Links -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#4338ca">
     <link rel="apple-touch-icon" href="./icon-192.png">
@@ -50,6 +53,7 @@
 
     <main class="flex-1 overflow-y-auto p-4 md:p-8 relative" id="app-container">
         
+        <!-- VIEW 1: SETUP -->
         <div id="view-setup" class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6 fade-in">
             <div class="flex justify-between items-center mb-6 border-b pb-2">
                 <h2 class="text-2xl font-bold text-slate-700">New Match Setup</h2>
@@ -62,7 +66,6 @@
                         <option value="T20">T20 (20 Overs)</option>
                         <option value="ODI">ODI (50 Overs)</option>
                         <option value="TEST">Test Match (4 Innings)</option>
-                        <option value="SUPER">Super Over (1 Over)</option>
                         <option value="CUSTOM">Custom Overs</option>
                     </select>
                 </div>
@@ -90,6 +93,7 @@
             </div>
         </div>
 
+        <!-- VIEW: MATCH HISTORY -->
         <div id="view-history" class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6 hidden fade-in">
             <div class="flex justify-between items-center mb-6 border-b pb-2">
                 <h2 class="text-2xl font-bold text-slate-700">Match History</h2>
@@ -98,6 +102,7 @@
             <div id="history-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2"></div>
         </div>
 
+        <!-- VIEW 2: SQUADS -->
         <div id="view-squads" class="max-w-4xl mx-auto hidden fade-in">
             <h2 class="text-2xl font-bold text-slate-700 mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">Playing Squads</h2>
             <div class="grid md:grid-cols-2 gap-6">
@@ -116,6 +121,7 @@
             </div>
         </div>
 
+        <!-- VIEW 3: TOSS -->
         <div id="view-toss" class="max-w-xl mx-auto hidden fade-in bg-white rounded-2xl shadow-xl border border-slate-200 p-8 text-center min-h-[400px] flex flex-col justify-center">
             <div id="toss-step-1">
                 <h2 class="text-2xl font-black text-slate-700 mb-6 uppercase tracking-widest border-b pb-4">Who is calling the Toss?</h2>
@@ -151,6 +157,7 @@
             </div>
         </div>
 
+        <!-- VIEW 4: MATCH -->
         <div id="view-match" class="max-w-6xl mx-auto hidden fade-in grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
             
             <div class="lg:col-span-2 space-y-6">
@@ -235,6 +242,7 @@
             </div>
         </div>
 
+        <!-- VIEW 5: SCORECARD -->
         <div id="view-scorecard" class="max-w-6xl mx-auto hidden fade-in pb-6">
             
             <div class="flex justify-between items-center mb-6">
@@ -307,6 +315,7 @@
         </div>
     </footer>
 
+    <!-- Universal Modal -->
     <div id="selection-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
         <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
             <h3 id="modal-title" class="text-2xl font-bold text-slate-800 mb-6 border-b pb-4">Modal Title</h3>
@@ -317,18 +326,19 @@
         </div>
     </div>
 
+    <!-- MAIN SCRIPT -->
     <script>
         let isProcessing = false; 
 
         const matchData = {
-            format: 'T20', maxOvers: 20, teamSize: 11, matchIsOver: false,
+            format: 'T20', maxOvers: 20, teamSize: 11, matchIsOver: false, isSuperOver: false,
             teams: { A: { name: '', players: [] }, B: { name: '', players: [] } },
             toss: { caller: null, call: null, winner: null, decision: null },
             battingTeam: 'A', bowlingTeam: 'B', innings: 1, target: null,
             score: { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 }, 
             partnership: { runs: 0, balls: 0 }, 
             strikerIdx: null, nonStrikerIdx: null, bowlerIdx: null,
-            overLog: [], history: [], modalState: '', pendingExtra: null, // ADDED pendingExtra variable
+            overLog: [], history: [], modalState: '', pendingExtra: null,
             needsNewBowler: false, pendingOverEndSwap: false,
             firstInningsData: null, savedToHistory: false
         };
@@ -392,7 +402,6 @@
             
             if (matchData.format === 'T20') matchData.maxOvers = 20;
             else if (matchData.format === 'ODI') matchData.maxOvers = 50;
-            else if (matchData.format === 'SUPER') matchData.maxOvers = 1;
             else if (matchData.format === 'TEST') matchData.maxOvers = 999;
             else matchData.maxOvers = parseInt(document.getElementById('custom-overs').value) || 10;
 
@@ -422,8 +431,10 @@
             ['A', 'B'].forEach(teamKey => {
                 matchData.teams[teamKey].players = [];
                 for(let i=0; i<matchData.teamSize; i++) {
+                    // Dynamically setting the player's name if they left it blank
+                    const inputVal = document.getElementById(`player-${teamKey}-${i}`).value.trim();
                     matchData.teams[teamKey].players.push({
-                        name: document.getElementById(`player-${teamKey}-${i}`).value || `Player ${i+1}`,
+                        name: inputVal !== "" ? inputVal : `Player ${i+1}`,
                         runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, hasBatted: false, dismissalText: '',
                         bowlRuns: 0, bowlBalls: 0, bowlWickets: 0
                     });
@@ -482,7 +493,6 @@
             return isProcessing || !document.getElementById('selection-modal').classList.contains('hidden') || matchData.matchIsOver || matchData.strikerIdx === null || matchData.bowlerIdx === null; 
         }
 
-        // ================= MODAL LOGIC =================
         function openModal(state) {
             matchData.modalState = state;
             const modal = document.getElementById('selection-modal');
@@ -525,17 +535,14 @@
                     </div>
                 `;
             }
-            // NEW EXTRA RUNS MODAL LOGIC
             else if (state === 'EXTRA_RUNS') {
                 const typeName = matchData.pendingExtra === 'WD' ? 'Wide' : (matchData.pendingExtra === 'NB' ? 'No Ball' : (matchData.pendingExtra === 'B' ? 'Bye' : 'Leg Bye'));
                 title.innerText = `${typeName} Details`;
                 
                 let optionsHtml = '';
                 if (matchData.pendingExtra === 'B' || matchData.pendingExtra === 'LB') {
-                    // For Byes, there is no "0" default. You must select how many byes were run.
                     optionsHtml = '<option value="1">1 Run</option><option value="2">2 Runs</option><option value="3">3 Runs</option><option value="4">4 Runs (Boundary)</option>';
                 } else {
-                    // For WD / NB, 0 means just the standard 1 run penalty
                     optionsHtml = '<option value="0">0 Additional (Just the Extra penalty)</option><option value="1">1 Additional Run</option><option value="2">2 Additional Runs</option><option value="3">3 Additional Runs</option><option value="4">4 Runs (Boundary)</option><option value="6">6 Runs (Six)</option>';
                 }
 
@@ -653,14 +660,14 @@
 
                 if (checkMatchWinCondition()) return; 
                 
-                if (matchData.score.wickets >= matchData.teamSize - 1) {
+                const maxWicketsAllowed = matchData.isSuperOver ? 2 : matchData.teamSize - 1;
+                if (matchData.score.wickets >= maxWicketsAllowed) {
                     updateDashboard(); 
                     return setTimeout(() => triggerInningsTransition(), 100); 
                 }
                 
                 return processBallOutcome(true); 
             }
-            // NEW EXTRA PROCESSING LOGIC
             else if (matchData.modalState === 'EXTRA_RUNS') {
                 const extraType = matchData.pendingExtra;
                 const extraRuns = parseInt(document.getElementById('extra-runs-value').value);
@@ -669,7 +676,6 @@
                 let logText = '';
                 
                 if (extraType === 'WD') {
-                    // Wides are always penalty(1) + additional runs
                     const totalWides = 1 + extraRuns;
                     matchData.score.runs += totalWides;
                     matchData.partnership.runs += totalWides;
@@ -678,14 +684,13 @@
                     if (extraRuns % 2 !== 0) swapStrike(false); 
                 } 
                 else if (extraType === 'NB') {
-                    // No Ball penalty is 1. Additional runs are credited to the batsman (assuming hit off bat).
                     const totalRuns = 1 + extraRuns;
                     matchData.score.runs += totalRuns;
                     matchData.partnership.runs += totalRuns;
                     getBowlTeam()[matchData.bowlerIdx].bowlRuns += totalRuns;
                     
                     getBatTeam()[matchData.strikerIdx].balls += 1;
-                    matchData.partnership.balls += 1; // NB counts as a ball faced for partnership
+                    matchData.partnership.balls += 1; 
                     
                     if (extraRuns > 0) {
                         getBatTeam()[matchData.strikerIdx].runs += extraRuns;
@@ -697,7 +702,6 @@
                     if (extraRuns % 2 !== 0) swapStrike(false);
                 }
                 else if (extraType === 'B' || extraType === 'LB') {
-                    // Byes are valid balls. No runs given to bowler.
                     matchData.score.runs += extraRuns;
                     matchData.score.validBalls += 1;
                     matchData.score.ballsThisOver += 1;
@@ -718,7 +722,7 @@
                 matchData.pendingExtra = null;
 
                 if (checkMatchWinCondition()) return;
-                return processBallOutcome(false); // Process normally
+                return processBallOutcome(false); 
             }
 
             document.getElementById('selection-modal').classList.add('hidden');
@@ -726,7 +730,6 @@
             updateDashboard();
         }
 
-        // 5. SCORING LOGIC
         function addRun(runs) {
             if(isLocked()) return;
             saveState();
@@ -794,54 +797,114 @@
             }
         }
 
-        // 6. MATCH PROGRESSION & HISTORY
         function triggerInningsTransition() {
-            const maxInningsForFormat = matchData.format === 'TEST' ? 4 : 2;
-
-            if (matchData.innings < maxInningsForFormat) {
-                alert(`Innings ${matchData.innings} Over! Next team to bat.`);
-                
-                if (matchData.innings === 1) {
-                    matchData.firstInningsData = {
-                        team: matchData.teams[matchData.battingTeam].name,
-                        score: `${matchData.score.runs}/${matchData.score.wickets}`,
-                        overs: formatOvers(matchData.score.validBalls)
-                    };
-                    matchData.target = matchData.score.runs + 1; 
+            if (matchData.format === 'TEST') {
+                if (matchData.innings < 4) {
+                    alert(`Innings ${matchData.innings} Over! Next team to bat.`);
+                    const temp = matchData.battingTeam;
+                    matchData.battingTeam = matchData.bowlingTeam;
+                    matchData.bowlingTeam = temp;
+                    
+                    matchData.innings += 1;
+                    matchData.score = { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 };
+                    matchData.partnership = { runs: 0, balls: 0 }; 
+                    matchData.overLog = [];
+                    matchData.history = []; 
+                    matchData.strikerIdx = null; matchData.nonStrikerIdx = null; matchData.bowlerIdx = null;
+                    updateDashboard();
+                    openModal('OPENING_PLAYERS');
+                } else {
+                    endMatch("Test Match Complete!");
                 }
+                return;
+            }
+
+            if (matchData.innings === 1) {
+                alert(`Innings Over! Target for ${matchData.teams[matchData.bowlingTeam].name} is ${matchData.score.runs + 1}`);
+                
+                matchData.firstInningsData = {
+                    team: matchData.teams[matchData.battingTeam].name,
+                    score: `${matchData.score.runs}/${matchData.score.wickets}`,
+                    overs: formatOvers(matchData.score.validBalls)
+                };
+                matchData.target = matchData.score.runs + 1; 
 
                 const temp = matchData.battingTeam;
                 matchData.battingTeam = matchData.bowlingTeam;
                 matchData.bowlingTeam = temp;
                 
-                matchData.innings += 1;
+                matchData.innings = 2;
                 matchData.score = { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 };
                 matchData.partnership = { runs: 0, balls: 0 }; 
                 matchData.overLog = [];
                 matchData.history = []; 
                 matchData.strikerIdx = null; matchData.nonStrikerIdx = null; matchData.bowlerIdx = null;
                 
-                if (matchData.format !== 'TEST') {
-                    document.getElementById('target-container').classList.remove('hidden');
-                    document.getElementById('req-container').classList.remove('hidden');
-                }
+                document.getElementById('target-container').classList.remove('hidden');
+                document.getElementById('req-container').classList.remove('hidden');
                 updateDashboard();
                 openModal('OPENING_PLAYERS');
-            } else {
-                let resultText = "Match Complete!";
-                if (matchData.format !== 'TEST') {
-                    if (matchData.score.runs < matchData.target - 1) {
-                        resultText = `${matchData.teams[matchData.bowlingTeam].name} Won the match!`;
-                    }
+            } 
+            else if (matchData.innings === 2 && !matchData.isSuperOver) {
+                if (matchData.score.runs === matchData.target - 1) {
+                    alert("Scores are level! MATCH TIED. Commencing SUPER OVER!");
+                    matchData.isSuperOver = true;
+                    matchData.innings = 3;
+                    matchData.maxOvers = 1;
+                    matchData.target = null;
+                    
+                    matchData.score = { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 };
+                    matchData.partnership = { runs: 0, balls: 0 }; 
+                    matchData.overLog = [];
+                    matchData.history = []; 
+                    matchData.strikerIdx = null; matchData.nonStrikerIdx = null; matchData.bowlerIdx = null;
+                    
+                    document.getElementById('target-container').classList.add('hidden');
+                    document.getElementById('req-container').classList.add('hidden');
+                    updateDashboard();
+                    openModal('OPENING_PLAYERS');
+                } else {
+                    let resultText = matchData.score.runs < matchData.target - 1 ? `${matchData.teams[matchData.bowlingTeam].name} Won the match!` : "Match Complete!";
+                    endMatch(resultText);
+                }
+            } 
+            else if (matchData.innings === 3) {
+                alert(`Super Over Innings 1 Over! Target is ${matchData.score.runs + 1}`);
+                matchData.target = matchData.score.runs + 1; 
+
+                const temp = matchData.battingTeam;
+                matchData.battingTeam = matchData.bowlingTeam;
+                matchData.bowlingTeam = temp;
+                
+                matchData.innings = 4;
+                matchData.score = { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 };
+                matchData.partnership = { runs: 0, balls: 0 }; 
+                matchData.overLog = [];
+                matchData.history = []; 
+                matchData.strikerIdx = null; matchData.nonStrikerIdx = null; matchData.bowlerIdx = null;
+                
+                document.getElementById('target-container').classList.remove('hidden');
+                document.getElementById('req-container').classList.remove('hidden');
+                updateDashboard();
+                openModal('OPENING_PLAYERS');
+            } 
+            else if (matchData.innings === 4) {
+                let resultText = "Super Over Tied! (Match Drawn)";
+                if (matchData.score.runs < matchData.target - 1) {
+                    resultText = `${matchData.teams[matchData.bowlingTeam].name} Won the Super Over!`;
                 }
                 endMatch(resultText);
             }
         }
 
         function checkMatchWinCondition() {
-            if (matchData.format !== 'TEST' && matchData.innings === 2 && matchData.target && matchData.score.runs >= matchData.target) {
-                endMatch(`${matchData.teams[matchData.battingTeam].name} Won the match!`);
-                return true;
+            if (matchData.format !== 'TEST') {
+                if ((matchData.innings === 2 && !matchData.isSuperOver) || (matchData.innings === 4 && matchData.isSuperOver)) {
+                    if (matchData.target && matchData.score.runs >= matchData.target) {
+                        endMatch(`${matchData.teams[matchData.battingTeam].name} Won!`);
+                        return true;
+                    }
+                }
             }
             return false;
         }
@@ -862,7 +925,7 @@
                 
                 const matchSummary = {
                     date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                    format: matchData.format,
+                    format: matchData.isSuperOver ? 'Super Over' : matchData.format,
                     team1: matchData.firstInningsData ? matchData.firstInningsData.team : matchData.teams[matchData.battingTeam].name,
                     score1: matchData.firstInningsData ? `${matchData.firstInningsData.score} (${matchData.firstInningsData.overs})` : `${matchData.score.runs}/${matchData.score.wickets} (${formatOvers(matchData.score.validBalls)})`,
                     team2: matchData.firstInningsData ? matchData.teams[matchData.battingTeam].name : '-',
@@ -876,7 +939,6 @@
             }
         }
 
-        // 7. UTILITIES
         function swapStrike(manual = true) {
             if(manual && isLocked()) return;
             if(manual) saveState();
@@ -918,7 +980,8 @@
             const nonStriker = batTeam[matchData.nonStrikerIdx];
             const bowler = bowlTeam[matchData.bowlerIdx];
 
-            document.getElementById('batting-team-name').innerText = `${matchData.teams[matchData.battingTeam].name} BATTING`;
+            document.getElementById('batting-team-name').innerText = `${matchData.teams[matchData.battingTeam].name} BATTING ${matchData.isSuperOver ? '(SUPER OVER)' : ''}`;
+            
             document.getElementById('main-score').innerHTML = `${matchData.score.runs}<span class="text-3xl md:text-4xl text-indigo-300 font-normal">/${matchData.score.wickets}</span>`;
             document.getElementById('main-overs').innerHTML = `${formatOvers(matchData.score.validBalls)}<span class="text-lg text-indigo-300 font-normal">/${matchData.maxOvers === 999 ? '' : matchData.maxOvers}</span>`;
             
@@ -1035,6 +1098,7 @@
         }
     </script>
     
+    <!-- PWA Installation Script -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
