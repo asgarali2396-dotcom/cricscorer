@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cricscorer-v2'; // Changed to v2 to force an update
+const CACHE_NAME = 'cricscorer-v3'; // Changed to v2 to force an update
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
