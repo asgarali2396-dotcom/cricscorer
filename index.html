@@ -221,10 +221,10 @@
                         <button onclick="addRun(6)" class="bg-indigo-600 hover:bg-indigo-500 py-4 rounded-xl font-bold text-2xl transition shadow-lg">6</button>
                     </div>
                     <div class="grid grid-cols-2 gap-3 mb-6">
-                        <button onclick="scoreExtra('WD')" class="bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold transition">Wide (WD)</button>
-                        <button onclick="scoreExtra('NB')" class="bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold transition">No Ball (NB)</button>
-                        <button onclick="scoreExtra('B')" class="bg-slate-600 hover:bg-slate-500 py-3 rounded-lg font-bold transition">Bye (B)</button>
-                        <button onclick="scoreExtra('LB')" class="bg-slate-600 hover:bg-slate-500 py-3 rounded-lg font-bold transition">Leg Bye (LB)</button>
+                        <button onclick="triggerExtra('WD')" class="bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold transition">Wide (WD)</button>
+                        <button onclick="triggerExtra('NB')" class="bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold transition">No Ball (NB)</button>
+                        <button onclick="triggerExtra('B')" class="bg-slate-600 hover:bg-slate-500 py-3 rounded-lg font-bold transition">Bye (B)</button>
+                        <button onclick="triggerExtra('LB')" class="bg-slate-600 hover:bg-slate-500 py-3 rounded-lg font-bold transition">Leg Bye (LB)</button>
                         <button onclick="triggerWicketDetails()" class="col-span-2 bg-rose-600 hover:bg-rose-500 py-4 rounded-xl font-bold text-xl tracking-widest transition shadow-lg mt-2">WICKET</button>
                     </div>
                     <div class="mt-auto grid grid-cols-2 gap-3 border-t border-slate-700 pt-4">
@@ -309,7 +309,7 @@
 
     <div id="selection-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
         <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
-            <h3 id="modal-title" class="text-2xl font-bold text-slate-800 mb-6 border-b pb-4">Select Players</h3>
+            <h3 id="modal-title" class="text-2xl font-bold text-slate-800 mb-6 border-b pb-4">Modal Title</h3>
             <div id="modal-content" class="space-y-4"></div>
             <button onclick="handleModalConfirm()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors mt-8 shadow-md">
                 Confirm Selection
@@ -320,7 +320,6 @@
     <script>
         let isProcessing = false; 
 
-        // 1. STATE OBJECT
         const matchData = {
             format: 'T20', maxOvers: 20, teamSize: 11, matchIsOver: false,
             teams: { A: { name: '', players: [] }, B: { name: '', players: [] } },
@@ -329,7 +328,7 @@
             score: { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 }, 
             partnership: { runs: 0, balls: 0 }, 
             strikerIdx: null, nonStrikerIdx: null, bowlerIdx: null,
-            overLog: [], history: [], modalState: '', 
+            overLog: [], history: [], modalState: '', pendingExtra: null, // ADDED pendingExtra variable
             needsNewBowler: false, pendingOverEndSwap: false,
             firstInningsData: null, savedToHistory: false
         };
@@ -355,7 +354,6 @@
             });
         }
 
-        // 2. HISTORY VIEW
         function showMatchHistory() {
             switchView('view-history');
             const historyList = document.getElementById('history-list');
@@ -389,8 +387,7 @@
             document.getElementById('custom-overs-container').style.display = format === 'CUSTOM' ? 'block' : 'none';
         }
 
-        // 3. SETUP LOGIC
-       function goToSquadSetup() {
+        function goToSquadSetup() {
             matchData.format = document.getElementById('match-format').value;
             
             if (matchData.format === 'T20') matchData.maxOvers = 20;
@@ -411,7 +408,6 @@
             const generateInputs = (teamKey) => {
                 let html = '';
                 for(let i=0; i<matchData.teamSize; i++) {
-                    // FIX: Removed the value="" attribute. Now it just uses placeholder=""
                     html += `<input type="text" id="player-${teamKey}-${i}" class="w-full p-2 text-sm border border-slate-200 rounded focus:border-indigo-500 outline-none" placeholder="Player ${i+1}">`;
                 }
                 return html;
@@ -486,7 +482,7 @@
             return isProcessing || !document.getElementById('selection-modal').classList.contains('hidden') || matchData.matchIsOver || matchData.strikerIdx === null || matchData.bowlerIdx === null; 
         }
 
-        // 4. MODALS
+        // ================= MODAL LOGIC =================
         function openModal(state) {
             matchData.modalState = state;
             const modal = document.getElementById('selection-modal');
@@ -526,6 +522,29 @@
                     </div>
                     <div id="fielder-selector" class="mb-4" style="display:none;">
                         ${createDropdown('Select Fielder involved', 'wicket-fielder', getBowlTeam(), [])}
+                    </div>
+                `;
+            }
+            // NEW EXTRA RUNS MODAL LOGIC
+            else if (state === 'EXTRA_RUNS') {
+                const typeName = matchData.pendingExtra === 'WD' ? 'Wide' : (matchData.pendingExtra === 'NB' ? 'No Ball' : (matchData.pendingExtra === 'B' ? 'Bye' : 'Leg Bye'));
+                title.innerText = `${typeName} Details`;
+                
+                let optionsHtml = '';
+                if (matchData.pendingExtra === 'B' || matchData.pendingExtra === 'LB') {
+                    // For Byes, there is no "0" default. You must select how many byes were run.
+                    optionsHtml = '<option value="1">1 Run</option><option value="2">2 Runs</option><option value="3">3 Runs</option><option value="4">4 Runs (Boundary)</option>';
+                } else {
+                    // For WD / NB, 0 means just the standard 1 run penalty
+                    optionsHtml = '<option value="0">0 Additional (Just the Extra penalty)</option><option value="1">1 Additional Run</option><option value="2">2 Additional Runs</option><option value="3">3 Additional Runs</option><option value="4">4 Runs (Boundary)</option><option value="6">6 Runs (Six)</option>';
+                }
+
+                html += `
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-slate-600 mb-2">Were there any extra runs scored off this delivery?</label>
+                        <select id="extra-runs-value" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500">
+                            ${optionsHtml}
+                        </select>
                     </div>
                 `;
             }
@@ -641,6 +660,66 @@
                 
                 return processBallOutcome(true); 
             }
+            // NEW EXTRA PROCESSING LOGIC
+            else if (matchData.modalState === 'EXTRA_RUNS') {
+                const extraType = matchData.pendingExtra;
+                const extraRuns = parseInt(document.getElementById('extra-runs-value').value);
+                
+                saveState();
+                let logText = '';
+                
+                if (extraType === 'WD') {
+                    // Wides are always penalty(1) + additional runs
+                    const totalWides = 1 + extraRuns;
+                    matchData.score.runs += totalWides;
+                    matchData.partnership.runs += totalWides;
+                    getBowlTeam()[matchData.bowlerIdx].bowlRuns += totalWides;
+                    logText = totalWides + 'WD';
+                    if (extraRuns % 2 !== 0) swapStrike(false); 
+                } 
+                else if (extraType === 'NB') {
+                    // No Ball penalty is 1. Additional runs are credited to the batsman (assuming hit off bat).
+                    const totalRuns = 1 + extraRuns;
+                    matchData.score.runs += totalRuns;
+                    matchData.partnership.runs += totalRuns;
+                    getBowlTeam()[matchData.bowlerIdx].bowlRuns += totalRuns;
+                    
+                    getBatTeam()[matchData.strikerIdx].balls += 1;
+                    matchData.partnership.balls += 1; // NB counts as a ball faced for partnership
+                    
+                    if (extraRuns > 0) {
+                        getBatTeam()[matchData.strikerIdx].runs += extraRuns;
+                        if (extraRuns === 4) getBatTeam()[matchData.strikerIdx].fours += 1;
+                        if (extraRuns === 6) getBatTeam()[matchData.strikerIdx].sixes += 1;
+                    }
+                    
+                    logText = extraRuns > 0 ? `NB+${extraRuns}` : 'NB';
+                    if (extraRuns % 2 !== 0) swapStrike(false);
+                }
+                else if (extraType === 'B' || extraType === 'LB') {
+                    // Byes are valid balls. No runs given to bowler.
+                    matchData.score.runs += extraRuns;
+                    matchData.score.validBalls += 1;
+                    matchData.score.ballsThisOver += 1;
+                    matchData.partnership.runs += extraRuns;
+                    matchData.partnership.balls += 1;
+                    
+                    getBowlTeam()[matchData.bowlerIdx].bowlBalls += 1;
+                    getBatTeam()[matchData.strikerIdx].balls += 1;
+                    
+                    logText = extraRuns + extraType;
+                    if (extraRuns % 2 !== 0) swapStrike(false);
+                }
+
+                logBall(logText, 'bg-amber-500 text-white font-bold');
+                
+                document.getElementById('selection-modal').classList.add('hidden');
+                matchData.modalState = '';
+                matchData.pendingExtra = null;
+
+                if (checkMatchWinCondition()) return;
+                return processBallOutcome(false); // Process normally
+            }
 
             document.getElementById('selection-modal').classList.add('hidden');
             matchData.modalState = ''; 
@@ -674,34 +753,10 @@
             processBallOutcome(false);
         }
 
-        function scoreExtra(type) {
+        function triggerExtra(type) {
             if(isLocked()) return;
-            saveState();
-            
-            if (type === 'WD') {
-                matchData.score.runs += 1; 
-                matchData.partnership.runs += 1; 
-                getBowlTeam()[matchData.bowlerIdx].bowlRuns += 1;
-            } else if (type === 'NB') {
-                matchData.score.runs += 1; 
-                matchData.partnership.runs += 1;
-                matchData.partnership.balls += 1; 
-                getBowlTeam()[matchData.bowlerIdx].bowlRuns += 1;
-                getBatTeam()[matchData.strikerIdx].balls += 1;
-            } else if (type === 'B' || type === 'LB') {
-                matchData.score.runs += 1; 
-                matchData.score.validBalls += 1; 
-                matchData.score.ballsThisOver += 1; 
-                matchData.partnership.runs += 1;
-                matchData.partnership.balls += 1;
-                getBowlTeam()[matchData.bowlerIdx].bowlBalls += 1;
-                getBatTeam()[matchData.strikerIdx].balls += 1;
-                swapStrike(false);
-            }
-            
-            logBall(type, 'bg-amber-500 text-white font-bold');
-            if (checkMatchWinCondition()) return;
-            processBallOutcome(false);
+            matchData.pendingExtra = type;
+            openModal('EXTRA_RUNS');
         }
 
         function triggerWicketDetails() {
