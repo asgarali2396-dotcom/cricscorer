@@ -66,6 +66,7 @@
                         <option value="T20">T20 (20 Overs)</option>
                         <option value="ODI">ODI (50 Overs)</option>
                         <option value="TEST">Test Match (4 Innings)</option>
+                        <option value="TURF">Turf Cricket (Magic Ball)</option>
                         <option value="CUSTOM">Custom Overs</option>
                     </select>
                 </div>
@@ -105,6 +106,10 @@
         <!-- VIEW 2: SQUADS -->
         <div id="view-squads" class="max-w-4xl mx-auto hidden fade-in">
             <h2 class="text-2xl font-bold text-slate-700 mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">Playing Squads</h2>
+            
+            <!-- NEW: INVISIBLE DATALIST FOR AUTOCOMPLETE -->
+            <datalist id="saved-players"></datalist>
+
             <div class="grid md:grid-cols-2 gap-6">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
                     <h3 id="label-team-a" class="font-bold text-lg text-indigo-700 mb-4 border-b pb-2">Team A</h3>
@@ -219,6 +224,10 @@
                 <h3 class="text-slate-400 text-sm font-bold uppercase tracking-widest mb-4 border-b border-slate-600 pb-2">Scoring Panel</h3>
                 
                 <div id="keypad-area" class="flex-1 flex flex-col">
+                    <div id="magic-ball-banner" class="hidden bg-gradient-to-r from-amber-400 to-amber-600 text-white font-black text-center py-2 px-4 rounded-xl mb-4 shadow-lg animate-pulse uppercase tracking-widest">
+                        <i class="fas fa-star mr-2"></i> Magic Ball Active - Runs Doubled! <i class="fas fa-star ml-2"></i>
+                    </div>
+
                     <div class="grid grid-cols-3 gap-3 mb-6">
                         <button onclick="addRun(0)" class="bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold text-xl transition shadow-inner">0</button>
                         <button onclick="addRun(1)" class="bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold text-xl transition shadow-inner">1</button>
@@ -394,7 +403,7 @@
 
         function toggleCustomOvers() {
             const format = document.getElementById('match-format').value;
-            document.getElementById('custom-overs-container').style.display = format === 'CUSTOM' ? 'block' : 'none';
+            document.getElementById('custom-overs-container').style.display = (format === 'CUSTOM' || format === 'TURF') ? 'block' : 'none';
         }
 
         function goToSquadSetup() {
@@ -403,7 +412,7 @@
             if (matchData.format === 'T20') matchData.maxOvers = 20;
             else if (matchData.format === 'ODI') matchData.maxOvers = 50;
             else if (matchData.format === 'TEST') matchData.maxOvers = 999;
-            else matchData.maxOvers = parseInt(document.getElementById('custom-overs').value) || 10;
+            else matchData.maxOvers = parseInt(document.getElementById('custom-overs').value) || 10; 
 
             matchData.teamSize = parseInt(document.getElementById('team-size').value) || 11;
             matchData.teams.A.name = document.getElementById('team-a-name').value || 'Team A';
@@ -414,10 +423,15 @@
             document.getElementById('toss-call-a').innerText = matchData.teams.A.name;
             document.getElementById('toss-call-b').innerText = matchData.teams.B.name;
 
+            // NEW: Fetch saved players and populate the datalist
+            const savedPlayers = JSON.parse(localStorage.getItem('jafarCricPlayers')) || [];
+            document.getElementById('saved-players').innerHTML = savedPlayers.map(name => `<option value="${name}">`).join('');
+
             const generateInputs = (teamKey) => {
                 let html = '';
                 for(let i=0; i<matchData.teamSize; i++) {
-                    html += `<input type="text" id="player-${teamKey}-${i}" class="w-full p-2 text-sm border border-slate-200 rounded focus:border-indigo-500 outline-none" placeholder="Player ${i+1}">`;
+                    // NEW: Added the list="saved-players" attribute to hook into the datalist
+                    html += `<input type="text" id="player-${teamKey}-${i}" list="saved-players" class="w-full p-2 text-sm border border-slate-200 rounded focus:border-indigo-500 outline-none" placeholder="Player ${i+1}">`;
                 }
                 return html;
             };
@@ -428,18 +442,33 @@
         }
 
         function goToToss() {
+            let savedPlayers = JSON.parse(localStorage.getItem('jafarCricPlayers')) || [];
+            let newPlayersAdded = false;
+
             ['A', 'B'].forEach(teamKey => {
                 matchData.teams[teamKey].players = [];
                 for(let i=0; i<matchData.teamSize; i++) {
-                    // Dynamically setting the player's name if they left it blank
                     const inputVal = document.getElementById(`player-${teamKey}-${i}`).value.trim();
+                    const finalName = inputVal !== "" ? inputVal : `Player ${i+1}`;
+                    
                     matchData.teams[teamKey].players.push({
-                        name: inputVal !== "" ? inputVal : `Player ${i+1}`,
+                        name: finalName,
                         runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, hasBatted: false, dismissalText: '',
                         bowlRuns: 0, bowlBalls: 0, bowlWickets: 0
                     });
+
+                    // NEW: Auto-save custom names directly into the autocomplete list
+                    if (inputVal !== "" && !savedPlayers.includes(inputVal)) {
+                        savedPlayers.push(inputVal);
+                        newPlayersAdded = true;
+                    }
                 }
             });
+
+            if (newPlayersAdded) {
+                localStorage.setItem('jafarCricPlayers', JSON.stringify(savedPlayers));
+            }
+
             switchView('view-toss');
         }
 
@@ -670,21 +699,22 @@
             }
             else if (matchData.modalState === 'EXTRA_RUNS') {
                 const extraType = matchData.pendingExtra;
-                const extraRuns = parseInt(document.getElementById('extra-runs-value').value);
+                const physicalRuns = parseInt(document.getElementById('extra-runs-value').value);
                 
                 saveState();
                 let logText = '';
+                let isMagicBall = (matchData.format === 'TURF' && matchData.score.ballsThisOver === 5);
                 
                 if (extraType === 'WD') {
-                    const totalWides = 1 + extraRuns;
+                    const totalWides = 1 + physicalRuns;
                     matchData.score.runs += totalWides;
                     matchData.partnership.runs += totalWides;
                     getBowlTeam()[matchData.bowlerIdx].bowlRuns += totalWides;
                     logText = totalWides + 'WD';
-                    if (extraRuns % 2 !== 0) swapStrike(false); 
+                    if (physicalRuns % 2 !== 0) swapStrike(false); 
                 } 
                 else if (extraType === 'NB') {
-                    const totalRuns = 1 + extraRuns;
+                    const totalRuns = 1 + physicalRuns;
                     matchData.score.runs += totalRuns;
                     matchData.partnership.runs += totalRuns;
                     getBowlTeam()[matchData.bowlerIdx].bowlRuns += totalRuns;
@@ -692,30 +722,32 @@
                     getBatTeam()[matchData.strikerIdx].balls += 1;
                     matchData.partnership.balls += 1; 
                     
-                    if (extraRuns > 0) {
-                        getBatTeam()[matchData.strikerIdx].runs += extraRuns;
-                        if (extraRuns === 4) getBatTeam()[matchData.strikerIdx].fours += 1;
-                        if (extraRuns === 6) getBatTeam()[matchData.strikerIdx].sixes += 1;
+                    if (physicalRuns > 0) {
+                        getBatTeam()[matchData.strikerIdx].runs += physicalRuns;
+                        if (physicalRuns === 4) getBatTeam()[matchData.strikerIdx].fours += 1;
+                        if (physicalRuns === 6) getBatTeam()[matchData.strikerIdx].sixes += 1;
                     }
                     
-                    logText = extraRuns > 0 ? `NB+${extraRuns}` : 'NB';
-                    if (extraRuns % 2 !== 0) swapStrike(false);
+                    logText = physicalRuns > 0 ? `NB+${physicalRuns}` : 'NB';
+                    if (physicalRuns % 2 !== 0) swapStrike(false);
                 }
                 else if (extraType === 'B' || extraType === 'LB') {
-                    matchData.score.runs += extraRuns;
+                    const actualExtraRuns = isMagicBall ? physicalRuns * 2 : physicalRuns;
+                    
+                    matchData.score.runs += actualExtraRuns;
                     matchData.score.validBalls += 1;
                     matchData.score.ballsThisOver += 1;
-                    matchData.partnership.runs += extraRuns;
+                    matchData.partnership.runs += actualExtraRuns;
                     matchData.partnership.balls += 1;
                     
                     getBowlTeam()[matchData.bowlerIdx].bowlBalls += 1;
                     getBatTeam()[matchData.strikerIdx].balls += 1;
                     
-                    logText = extraRuns + extraType;
-                    if (extraRuns % 2 !== 0) swapStrike(false);
+                    logText = (isMagicBall ? physicalRuns + 'x2' : physicalRuns) + extraType;
+                    if (physicalRuns % 2 !== 0) swapStrike(false);
                 }
 
-                logBall(logText, 'bg-amber-500 text-white font-bold');
+                logBall(logText, isMagicBall ? 'bg-amber-400 text-slate-900 font-black' : 'bg-amber-500 text-white font-bold');
                 
                 document.getElementById('selection-modal').classList.add('hidden');
                 matchData.modalState = '';
@@ -730,29 +762,40 @@
             updateDashboard();
         }
 
-        function addRun(runs) {
+        function addRun(physicalRuns) {
             if(isLocked()) return;
             saveState();
             
-            getBatTeam()[matchData.strikerIdx].runs += runs; 
-            getBatTeam()[matchData.strikerIdx].balls += 1;
-            if(runs === 4) getBatTeam()[matchData.strikerIdx].fours += 1;
-            if(runs === 6) getBatTeam()[matchData.strikerIdx].sixes += 1;
+            let isMagicBall = (matchData.format === 'TURF' && matchData.score.ballsThisOver === 5);
+            let actualRuns = isMagicBall ? physicalRuns * 2 : physicalRuns;
             
-            getBowlTeam()[matchData.bowlerIdx].bowlRuns += runs; 
+            getBatTeam()[matchData.strikerIdx].runs += actualRuns; 
+            getBatTeam()[matchData.strikerIdx].balls += 1;
+            
+            if(physicalRuns === 4) getBatTeam()[matchData.strikerIdx].fours += 1;
+            if(physicalRuns === 6) getBatTeam()[matchData.strikerIdx].sixes += 1;
+            
+            getBowlTeam()[matchData.bowlerIdx].bowlRuns += actualRuns; 
             getBowlTeam()[matchData.bowlerIdx].bowlBalls += 1;
 
-            matchData.score.runs += runs;
+            matchData.score.runs += actualRuns;
             matchData.score.validBalls += 1;
             matchData.score.ballsThisOver += 1; 
             
-            matchData.partnership.runs += runs;
+            matchData.partnership.runs += actualRuns;
             matchData.partnership.balls += 1;
 
-            logBall(runs.toString(), runs === 4 ? 'bg-indigo-500 text-white' : (runs === 6 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'));
+            let logText = physicalRuns.toString();
+            if (isMagicBall) logText = physicalRuns + 'x2';
+
+            let pillColor = physicalRuns === 4 ? 'bg-indigo-500 text-white' : (physicalRuns === 6 ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700');
+            if (isMagicBall) pillColor = 'bg-amber-400 text-slate-900 font-black';
+
+            logBall(logText, pillColor);
 
             if (checkMatchWinCondition()) return; 
-            if(runs % 2 !== 0) swapStrike(false);
+            
+            if(physicalRuns % 2 !== 0) swapStrike(false);
             processBallOutcome(false);
         }
 
@@ -979,6 +1022,13 @@
             const striker = batTeam[matchData.strikerIdx];
             const nonStriker = batTeam[matchData.nonStrikerIdx];
             const bowler = bowlTeam[matchData.bowlerIdx];
+
+            const magicBanner = document.getElementById('magic-ball-banner');
+            if (matchData.format === 'TURF' && matchData.score.ballsThisOver === 5 && !matchData.matchIsOver) {
+                magicBanner.classList.remove('hidden');
+            } else {
+                magicBanner.classList.add('hidden');
+            }
 
             document.getElementById('batting-team-name').innerText = `${matchData.teams[matchData.battingTeam].name} BATTING ${matchData.isSuperOver ? '(SUPER OVER)' : ''}`;
             
