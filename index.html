@@ -1158,22 +1158,24 @@
             });
         }
     </script>
-   <!-- Safety Net Script -->
     <script>
-        // 1. Trap the Mobile Hardware Back Button
-        window.history.pushState({ app: "cricscorer" }, "", "");
+        // 1. Initial trap setup when the app loads
+        window.history.pushState({ trapped: true }, "", window.location.href);
 
         window.addEventListener('popstate', function (e) {
             // Check if a match is actively running
             if (matchData && !matchData.matchIsOver && matchData.strikerIdx !== null) {
+                
+                // CRITICAL FIX: Push the state back IMMEDIATELY before the confirm dialog appears.
+                // This resets the trap before the browser's security can block it.
+                window.history.pushState({ trapped: true }, "", window.location.href);
+                
                 const confirmLeave = confirm("⚠️ MATCH IN PROGRESS!\n\nIf you go back, you will lose the current score. Are you sure you want to exit?");
                 
-                if (!confirmLeave) {
-                    // User clicked "Cancel" - trap the back button again
-                    window.history.pushState({ app: "cricscorer" }, "", "");
-                } else {
-                    // User clicked "OK" - let the app close
-                    window.history.back();
+                if (confirmLeave) {
+                    // User clicked "OK" (They want to leave).
+                    // Because we just pushed a new dummy state above, we now need to jump back 2 steps to successfully exit the website.
+                    window.history.go(-2);
                 }
             }
         });
