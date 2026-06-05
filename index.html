@@ -1158,15 +1158,33 @@
             });
         }
     </script>
+   <!-- Safety Net Script -->
     <script>
-    // Prevent accidental tab closure during an active match
-window.addEventListener('beforeunload', function (e) {
-    if (matchData && !matchData.matchIsOver && matchData.strikerIdx !== null) {
-        // Cancel the event and show a warning
-        e.preventDefault();
-        e.returnValue = '';
-    }
-});
+        // 1. Trap the Mobile Hardware Back Button
+        window.history.pushState({ app: "cricscorer" }, "", "");
+
+        window.addEventListener('popstate', function (e) {
+            // Check if a match is actively running
+            if (matchData && !matchData.matchIsOver && matchData.strikerIdx !== null) {
+                const confirmLeave = confirm("⚠️ MATCH IN PROGRESS!\n\nIf you go back, you will lose the current score. Are you sure you want to exit?");
+                
+                if (!confirmLeave) {
+                    // User clicked "Cancel" - trap the back button again
+                    window.history.pushState({ app: "cricscorer" }, "", "");
+                } else {
+                    // User clicked "OK" - let the app close
+                    window.history.back();
+                }
+            }
+        });
+
+        // 2. Prevent Accidental Browser Tab Refresh/Closure (Desktop)
+        window.addEventListener('beforeunload', function (e) {
+            if (matchData && !matchData.matchIsOver && matchData.strikerIdx !== null) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
     </script>
 </body>
 </html>
