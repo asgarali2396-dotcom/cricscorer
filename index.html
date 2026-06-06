@@ -4,13 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JAFAR's CricScorer</title>
-    <!-- Tailwind & Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- HTML2Canvas for exporting images -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <!-- PWA Links -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#4338ca">
     <link rel="apple-touch-icon" href="./icon-192.png">
@@ -53,7 +50,6 @@
 
     <main class="flex-1 overflow-y-auto p-4 md:p-8 relative" id="app-container">
         
-        <!-- VIEW 1: SETUP -->
         <div id="view-setup" class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6 fade-in">
             <div class="flex justify-between items-center mb-6 border-b pb-2">
                 <h2 class="text-2xl font-bold text-slate-700">New Match Setup</h2>
@@ -94,7 +90,6 @@
             </div>
         </div>
 
-        <!-- VIEW: MATCH HISTORY -->
         <div id="view-history" class="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6 hidden fade-in">
             <div class="flex justify-between items-center mb-6 border-b pb-2">
                 <h2 class="text-2xl font-bold text-slate-700">Match History</h2>
@@ -103,11 +98,9 @@
             <div id="history-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2"></div>
         </div>
 
-        <!-- VIEW 2: SQUADS -->
         <div id="view-squads" class="max-w-4xl mx-auto hidden fade-in">
             <h2 class="text-2xl font-bold text-slate-700 mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">Playing Squads</h2>
             
-            <!-- NEW: INVISIBLE DATALIST FOR AUTOCOMPLETE -->
             <datalist id="saved-players"></datalist>
 
             <div class="grid md:grid-cols-2 gap-6">
@@ -126,7 +119,6 @@
             </div>
         </div>
 
-        <!-- VIEW 3: TOSS -->
         <div id="view-toss" class="max-w-xl mx-auto hidden fade-in bg-white rounded-2xl shadow-xl border border-slate-200 p-8 text-center min-h-[400px] flex flex-col justify-center">
             <div id="toss-step-1">
                 <h2 class="text-2xl font-black text-slate-700 mb-6 uppercase tracking-widest border-b pb-4">Who is calling the Toss?</h2>
@@ -162,7 +154,6 @@
             </div>
         </div>
 
-        <!-- VIEW 4: MATCH -->
         <div id="view-match" class="max-w-6xl mx-auto hidden fade-in grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
             
             <div class="lg:col-span-2 space-y-6">
@@ -228,6 +219,11 @@
                         <i class="fas fa-star mr-2"></i> Magic Ball Active - Runs Doubled! <i class="fas fa-star ml-2"></i>
                     </div>
 
+                    <div id="test-controls" class="hidden grid-cols-2 gap-3 mb-6">
+                        <button onclick="declareInnings()" class="bg-indigo-800 hover:bg-indigo-700 py-3 rounded-lg font-bold text-white transition shadow-md border border-indigo-500"><i class="fas fa-flag text-amber-400 mr-2"></i>Declare Innings</button>
+                        <button onclick="drawMatch()" class="bg-slate-600 hover:bg-slate-500 py-3 rounded-lg font-bold text-white transition shadow-md"><i class="fas fa-handshake mr-2"></i>Match Drawn</button>
+                    </div>
+
                     <div class="grid grid-cols-3 gap-3 mb-6">
                         <button onclick="addRun(0)" class="bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold text-xl transition shadow-inner">0</button>
                         <button onclick="addRun(1)" class="bg-slate-700 hover:bg-slate-600 py-4 rounded-xl font-bold text-xl transition shadow-inner">1</button>
@@ -251,9 +247,7 @@
             </div>
         </div>
 
-        <!-- VIEW 5: SCORECARD -->
         <div id="view-scorecard" class="max-w-6xl mx-auto hidden fade-in pb-6">
-            
             <div class="flex justify-between items-center mb-6">
                 <button onclick="switchView('view-setup')" class="px-5 py-2 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300 transition">Home</button>
                 <button onclick="exportScorecardToImage()" class="px-5 py-2 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition shadow-lg"><i class="fas fa-camera mr-2"></i> Save Image</button>
@@ -278,14 +272,14 @@
                             <h3 class="text-xl font-bold tracking-wider" id="scorecard-team-a-name">Team A</h3>
                         </div>
                         <div class="p-4">
-                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Batting</h4>
+                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Batting Aggregate</h4>
                             <table class="w-full text-left border-collapse text-sm mb-4">
                                 <thead class="text-slate-500"><tr><th class="py-2">Batter</th><th class="py-2 text-right">R</th><th class="py-2 text-right">B</th><th class="py-2 text-right">4s</th><th class="py-2 text-right">6s</th><th class="py-2 text-right">SR</th></tr></thead>
                                 <tbody id="scorecard-a-bat" class="divide-y divide-slate-100"></tbody>
                             </table>
                         </div>
                         <div class="p-4 bg-slate-50">
-                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Bowling</h4>
+                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Bowling Aggregate</h4>
                             <table class="w-full text-left border-collapse text-sm">
                                 <thead class="text-slate-500"><tr><th class="py-2">Bowler</th><th class="py-2 text-right">O</th><th class="py-2 text-right">M</th><th class="py-2 text-right">R</th><th class="py-2 text-right">W</th><th class="py-2 text-right">ECO</th></tr></thead>
                                 <tbody id="scorecard-a-bowl" class="divide-y divide-slate-100"></tbody>
@@ -298,14 +292,14 @@
                             <h3 class="text-xl font-bold tracking-wider" id="scorecard-team-b-name">Team B</h3>
                         </div>
                         <div class="p-4">
-                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Batting</h4>
+                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Batting Aggregate</h4>
                             <table class="w-full text-left border-collapse text-sm mb-4">
                                 <thead class="text-slate-500"><tr><th class="py-2">Batter</th><th class="py-2 text-right">R</th><th class="py-2 text-right">B</th><th class="py-2 text-right">4s</th><th class="py-2 text-right">6s</th><th class="py-2 text-right">SR</th></tr></thead>
                                 <tbody id="scorecard-b-bat" class="divide-y divide-slate-100"></tbody>
                             </table>
                         </div>
                         <div class="p-4 bg-slate-50">
-                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Bowling</h4>
+                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Bowling Aggregate</h4>
                             <table class="w-full text-left border-collapse text-sm">
                                 <thead class="text-slate-500"><tr><th class="py-2">Bowler</th><th class="py-2 text-right">O</th><th class="py-2 text-right">M</th><th class="py-2 text-right">R</th><th class="py-2 text-right">W</th><th class="py-2 text-right">ECO</th></tr></thead>
                                 <tbody id="scorecard-b-bowl" class="divide-y divide-slate-100"></tbody>
@@ -324,7 +318,6 @@
         </div>
     </footer>
 
-    <!-- Universal Modal -->
     <div id="selection-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
         <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
             <h3 id="modal-title" class="text-2xl font-bold text-slate-800 mb-6 border-b pb-4">Modal Title</h3>
@@ -335,7 +328,6 @@
         </div>
     </div>
 
-    <!-- MAIN SCRIPT -->
     <script>
         let isProcessing = false; 
 
@@ -349,7 +341,8 @@
             strikerIdx: null, nonStrikerIdx: null, bowlerIdx: null,
             overLog: [], history: [], modalState: '', pendingExtra: null,
             needsNewBowler: false, pendingOverEndSwap: false,
-            firstInningsData: null, savedToHistory: false
+            firstInningsData: null, savedToHistory: false,
+            testHistory: { A: [], B: [] } // NEW: Tracks aggregate innings for Test Matches
         };
 
         function switchView(viewId) {
@@ -423,14 +416,12 @@
             document.getElementById('toss-call-a').innerText = matchData.teams.A.name;
             document.getElementById('toss-call-b').innerText = matchData.teams.B.name;
 
-            // NEW: Fetch saved players and populate the datalist
             const savedPlayers = JSON.parse(localStorage.getItem('jafarCricPlayers')) || [];
             document.getElementById('saved-players').innerHTML = savedPlayers.map(name => `<option value="${name}">`).join('');
 
             const generateInputs = (teamKey) => {
                 let html = '';
                 for(let i=0; i<matchData.teamSize; i++) {
-                    // NEW: Added the list="saved-players" attribute to hook into the datalist
                     html += `<input type="text" id="player-${teamKey}-${i}" list="saved-players" class="w-full p-2 text-sm border border-slate-200 rounded focus:border-indigo-500 outline-none" placeholder="Player ${i+1}">`;
                 }
                 return html;
@@ -457,7 +448,6 @@
                         bowlRuns: 0, bowlBalls: 0, bowlWickets: 0
                     });
 
-                    // NEW: Auto-save custom names directly into the autocomplete list
                     if (inputVal !== "" && !savedPlayers.includes(inputVal)) {
                         savedPlayers.push(inputVal);
                         newPlayersAdded = true;
@@ -465,10 +455,7 @@
                 }
             });
 
-            if (newPlayersAdded) {
-                localStorage.setItem('jafarCricPlayers', JSON.stringify(savedPlayers));
-            }
-
+            if (newPlayersAdded) localStorage.setItem('jafarCricPlayers', JSON.stringify(savedPlayers));
             switchView('view-toss');
         }
 
@@ -692,7 +679,7 @@
                 const maxWicketsAllowed = matchData.isSuperOver ? 2 : matchData.teamSize - 1;
                 if (matchData.score.wickets >= maxWicketsAllowed) {
                     updateDashboard(); 
-                    return setTimeout(() => triggerInningsTransition(), 100); 
+                    return setTimeout(() => triggerInningsTransition(false), 100); 
                 }
                 
                 return processBallOutcome(true); 
@@ -762,6 +749,7 @@
             updateDashboard();
         }
 
+        // SCORING LOGIC
         function addRun(physicalRuns) {
             if(isLocked()) return;
             saveState();
@@ -822,7 +810,7 @@
                     }
 
                     if (overEnded && matchData.maxOvers !== 999 && (matchData.score.validBalls / 6) >= matchData.maxOvers) {
-                        triggerInningsTransition();
+                        triggerInningsTransition(false);
                     } else if (wicketFell && overEnded) {
                         matchData.pendingOverEndSwap = true;
                         matchData.needsNewBowler = true;
@@ -840,28 +828,83 @@
             }
         }
 
-        function triggerInningsTransition() {
+        // ================= NEW TEST MATCH CONTROLS =================
+        function declareInnings() {
+            if (isLocked()) return;
+            if (confirm("Are you sure the batting captain wants to declare this innings?")) {
+                triggerInningsTransition(true); 
+            }
+        }
+
+        function drawMatch() {
+            if (isLocked()) return;
+            if (confirm("Has time run out? Do you want to declare the match a Draw?")) {
+                endMatch("Match Drawn");
+            }
+        }
+
+        // ================= MATCH PROGRESSION & AGGREGATE LOGIC =================
+        function triggerInningsTransition(isDeclared = false) {
             if (matchData.format === 'TEST') {
+                // Save this innings score into the aggregate array
+                matchData.testHistory[matchData.battingTeam].push(matchData.score.runs);
+                
                 if (matchData.innings < 4) {
-                    alert(`Innings ${matchData.innings} Over! Next team to bat.`);
+                    // Check for Innings Defeat at the end of Innings 3
+                    if (matchData.innings === 3) {
+                        let currentTeamTotal = matchData.testHistory[matchData.battingTeam].reduce((a,b) => a+b, 0);
+                        let otherTeamFirstInnings = matchData.testHistory[matchData.bowlingTeam][0];
+                        
+                        // If they are all out (not declared) and still trailing, they lose by an innings
+                        if (!isDeclared && currentTeamTotal < otherTeamFirstInnings) {
+                            let diff = otherTeamFirstInnings - currentTeamTotal;
+                            endMatch(`${matchData.teams[matchData.bowlingTeam].name} Won by an innings and ${diff} runs!`);
+                            return;
+                        } else {
+                            // Set target for 4th innings
+                            matchData.target = (currentTeamTotal - otherTeamFirstInnings) + 1;
+                            alert(`Innings ${isDeclared ? 'Declared' : 'Over'}! Target for ${matchData.teams[matchData.bowlingTeam].name} is ${matchData.target}`);
+                        }
+                    } else {
+                        alert(`Innings ${matchData.innings} ${isDeclared ? 'Declared' : 'Over'}! Next team to bat.`);
+                    }
+
+                    // Swap Teams
                     const temp = matchData.battingTeam;
                     matchData.battingTeam = matchData.bowlingTeam;
                     matchData.bowlingTeam = temp;
                     
+                    // Reset State
                     matchData.innings += 1;
                     matchData.score = { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 };
                     matchData.partnership = { runs: 0, balls: 0 }; 
                     matchData.overLog = [];
                     matchData.history = []; 
                     matchData.strikerIdx = null; matchData.nonStrikerIdx = null; matchData.bowlerIdx = null;
+                    
+                    if (matchData.innings === 4) {
+                        document.getElementById('target-container').classList.remove('hidden');
+                        document.getElementById('req-container').classList.remove('hidden');
+                    }
+                    
                     updateDashboard();
                     openModal('OPENING_PLAYERS');
                 } else {
-                    endMatch("Test Match Complete!");
+                    // End of 4th Innings and they didn't catch the target
+                    let team4Total = matchData.testHistory[matchData.battingTeam].reduce((a,b) => a+b, 0);
+                    let team3Total = matchData.testHistory[matchData.bowlingTeam].reduce((a,b) => a+b, 0);
+                    
+                    if (team4Total === team3Total) {
+                        endMatch("Match Tied!");
+                    } else {
+                        let diff = team3Total - team4Total;
+                        endMatch(`${matchData.teams[matchData.bowlingTeam].name} Won by ${diff} runs!`);
+                    }
                 }
                 return;
             }
 
+            // STANDARD T20 / ODI LOGIC
             if (matchData.innings === 1) {
                 alert(`Innings Over! Target for ${matchData.teams[matchData.bowlingTeam].name} is ${matchData.score.runs + 1}`);
                 
@@ -941,7 +984,16 @@
         }
 
         function checkMatchWinCondition() {
-            if (matchData.format !== 'TEST') {
+            // Test Match Win
+            if (matchData.format === 'TEST' && matchData.innings === 4 && matchData.target) {
+                if (matchData.score.runs >= matchData.target) {
+                    let wicketsLeft = (matchData.teamSize - 1) - matchData.score.wickets;
+                    endMatch(`${matchData.teams[matchData.battingTeam].name} Won by ${wicketsLeft} wickets!`);
+                    return true;
+                }
+            } 
+            // Standard/Super Over Win
+            else if (matchData.format !== 'TEST') {
                 if ((matchData.innings === 2 && !matchData.isSuperOver) || (matchData.innings === 4 && matchData.isSuperOver)) {
                     if (matchData.target && matchData.score.runs >= matchData.target) {
                         endMatch(`${matchData.teams[matchData.battingTeam].name} Won!`);
@@ -966,13 +1018,28 @@
                 const momData = calculateManOfTheMatch();
                 const momName = (momData && momData.player) ? `${momData.player.name} (${momData.teamName})` : 'N/A';
                 
+                let team1ScoreStr, team2ScoreStr, team1NameStr, team2NameStr;
+
+                if (matchData.format === 'TEST') {
+                    // Save Aggregate format for Test Matches
+                    team1NameStr = matchData.teams.A.name;
+                    team2NameStr = matchData.teams.B.name;
+                    team1ScoreStr = matchData.testHistory.A.reduce((a,b)=>a+b, 0) + (matchData.battingTeam === 'A' ? matchData.score.runs : 0);
+                    team2ScoreStr = matchData.testHistory.B.reduce((a,b)=>a+b, 0) + (matchData.battingTeam === 'B' ? matchData.score.runs : 0);
+                } else {
+                    team1NameStr = matchData.firstInningsData ? matchData.firstInningsData.team : matchData.teams[matchData.battingTeam].name;
+                    team2NameStr = matchData.firstInningsData ? matchData.teams[matchData.battingTeam].name : '-';
+                    team1ScoreStr = matchData.firstInningsData ? `${matchData.firstInningsData.score} (${matchData.firstInningsData.overs})` : `${matchData.score.runs}/${matchData.score.wickets} (${formatOvers(matchData.score.validBalls)})`;
+                    team2ScoreStr = matchData.firstInningsData ? `${matchData.score.runs}/${matchData.score.wickets} (${formatOvers(matchData.score.validBalls)})` : '-';
+                }
+
                 const matchSummary = {
                     date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
                     format: matchData.isSuperOver ? 'Super Over' : matchData.format,
-                    team1: matchData.firstInningsData ? matchData.firstInningsData.team : matchData.teams[matchData.battingTeam].name,
-                    score1: matchData.firstInningsData ? `${matchData.firstInningsData.score} (${matchData.firstInningsData.overs})` : `${matchData.score.runs}/${matchData.score.wickets} (${formatOvers(matchData.score.validBalls)})`,
-                    team2: matchData.firstInningsData ? matchData.teams[matchData.battingTeam].name : '-',
-                    score2: matchData.firstInningsData ? `${matchData.score.runs}/${matchData.score.wickets} (${formatOvers(matchData.score.validBalls)})` : '-',
+                    team1: team1NameStr,
+                    score1: team1ScoreStr,
+                    team2: team2NameStr,
+                    score2: team2ScoreStr,
                     result: resultMessage,
                     mom: momName
                 };
@@ -1023,6 +1090,7 @@
             const nonStriker = batTeam[matchData.nonStrikerIdx];
             const bowler = bowlTeam[matchData.bowlerIdx];
 
+            // Toggle UI elements based on format
             const magicBanner = document.getElementById('magic-ball-banner');
             if (matchData.format === 'TURF' && matchData.score.ballsThisOver === 5 && !matchData.matchIsOver) {
                 magicBanner.classList.remove('hidden');
@@ -1030,8 +1098,26 @@
                 magicBanner.classList.add('hidden');
             }
 
-            document.getElementById('batting-team-name').innerText = `${matchData.teams[matchData.battingTeam].name} BATTING ${matchData.isSuperOver ? '(SUPER OVER)' : ''}`;
-            
+            const testControls = document.getElementById('test-controls');
+            if (matchData.format === 'TEST') {
+                testControls.classList.remove('hidden');
+                testControls.classList.add('grid');
+                
+                // Show Test Match Lead/Trail data
+                if (matchData.innings > 1 && !matchData.target) {
+                    let batTeamTotal = matchData.testHistory[matchData.battingTeam].reduce((a,b)=>a+b, 0) + matchData.score.runs;
+                    let bowlTeamTotal = matchData.testHistory[matchData.bowlingTeam].reduce((a,b)=>a+b, 0);
+                    let diff = batTeamTotal - bowlTeamTotal;
+                    
+                    let leadText = diff > 0 ? `LEADS BY ${diff}` : (diff < 0 ? `TRAILS BY ${Math.abs(diff)}` : "SCORES LEVEL");
+                    document.getElementById('rrr').innerText = leadText;
+                    document.getElementById('req-container').classList.remove('hidden');
+                }
+            } else {
+                if(testControls) { testControls.classList.add('hidden'); testControls.classList.remove('grid'); }
+            }
+
+            document.getElementById('batting-team-name').innerText = `${matchData.teams[matchData.battingTeam].name} BATTING ${matchData.isSuperOver ? '(SUPER OVER)' : (matchData.format === 'TEST' ? `(INN ${matchData.innings})` : '')}`;
             document.getElementById('main-score').innerHTML = `${matchData.score.runs}<span class="text-3xl md:text-4xl text-indigo-300 font-normal">/${matchData.score.wickets}</span>`;
             document.getElementById('main-overs').innerHTML = `${formatOvers(matchData.score.validBalls)}<span class="text-lg text-indigo-300 font-normal">/${matchData.maxOvers === 999 ? '' : matchData.maxOvers}</span>`;
             
@@ -1039,14 +1125,21 @@
             document.getElementById('crr').innerText = totalOvers > 0 ? (matchData.score.runs / totalOvers).toFixed(2) : "0.00";
             document.getElementById('partnership-stats').innerText = `${matchData.partnership.runs} (${matchData.partnership.balls})`;
 
-            if (matchData.format !== 'TEST' && matchData.target) {
+            if (matchData.target) {
                 document.getElementById('target-score').innerText = matchData.target;
                 const runsNeeded = Math.max(0, matchData.target - matchData.score.runs);
                 const ballsLeft = Math.max(0, (matchData.maxOvers * 6) - matchData.score.validBalls);
-                const rrr = ballsLeft > 0 ? ((runsNeeded / ballsLeft) * 6).toFixed(2) : "0.00";
-                document.getElementById('rrr').innerText = runsNeeded > 0 ? rrr : "-";
-                document.getElementById('chase-equation').innerText = `Need ${runsNeeded} runs in ${ballsLeft} balls`;
-                document.getElementById('chase-equation-container').classList.remove('hidden');
+                
+                // Only show required run rate if overs are limited
+                if (matchData.maxOvers !== 999) {
+                    const rrr = ballsLeft > 0 ? ((runsNeeded / ballsLeft) * 6).toFixed(2) : "0.00";
+                    document.getElementById('rrr').innerText = runsNeeded > 0 ? rrr : "-";
+                    document.getElementById('chase-equation').innerText = `Need ${runsNeeded} runs in ${ballsLeft} balls`;
+                    document.getElementById('chase-equation-container').classList.remove('hidden');
+                } else {
+                    document.getElementById('chase-equation').innerText = `Need ${runsNeeded} runs to win`;
+                    document.getElementById('chase-equation-container').classList.remove('hidden');
+                }
             }
 
             document.getElementById('batsmen-tbody').innerHTML = `
@@ -1120,7 +1213,7 @@
 
                 let batHtml = '';
                 team.players.forEach(p => {
-                    if (p.hasBatted) {
+                    if (p.hasBatted || matchData.format === 'TEST') {
                         batHtml += `
                         <tr class="border-b border-slate-100 hover:bg-slate-50">
                             <td class="py-2">
@@ -1148,39 +1241,19 @@
         }
     </script>
     
-    <!-- PWA Installation Script -->
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('PWA active'))
-                    .catch(err => console.log('PWA error:', err));
-            });
-        }
-    </script>
-    <script>
-        // 1. Initial trap setup when the app loads
         window.history.pushState({ trapped: true }, "", window.location.href);
 
         window.addEventListener('popstate', function (e) {
-            // Check if a match is actively running
             if (matchData && !matchData.matchIsOver && matchData.strikerIdx !== null) {
-                
-                // CRITICAL FIX: Push the state back IMMEDIATELY before the confirm dialog appears.
-                // This resets the trap before the browser's security can block it.
                 window.history.pushState({ trapped: true }, "", window.location.href);
-                
                 const confirmLeave = confirm("⚠️ MATCH IN PROGRESS!\n\nIf you go back, you will lose the current score. Are you sure you want to exit?");
-                
                 if (confirmLeave) {
-                    // User clicked "OK" (They want to leave).
-                    // Because we just pushed a new dummy state above, we now need to jump back 2 steps to successfully exit the website.
                     window.history.go(-2);
                 }
             }
         });
 
-        // 2. Prevent Accidental Browser Tab Refresh/Closure (Desktop)
         window.addEventListener('beforeunload', function (e) {
             if (matchData && !matchData.matchIsOver && matchData.strikerIdx !== null) {
                 e.preventDefault();
