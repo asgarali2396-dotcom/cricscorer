@@ -356,9 +356,15 @@
             }
         }
 
-        function discardMatch() {
+       function discardMatch() {
             localStorage.removeItem('jafarCricActiveMatch');
             document.getElementById('recovery-modal').classList.add('hidden');
+            
+            // FIX: Clean up any leftover UI from the discarded match
+            document.getElementById('target-container').classList.add('hidden');
+            document.getElementById('req-container').classList.add('hidden');
+            document.getElementById('chase-equation-container').classList.add('hidden');
+            
             switchView('view-setup');
         }
 
@@ -1098,12 +1104,17 @@
             }
         }
 
-        // ================= REMATCH LOGIC =================
+     // ================= REMATCH LOGIC =================
         function triggerRematch() {
             // Hide the match over overlay explicitly
             document.getElementById('match-over-overlay').classList.add('hidden');
             document.getElementById('match-over-overlay').classList.remove('flex');
             document.getElementById('header-match-status').classList.add('hidden');
+
+            // BUG FIX: Hide the target and REQ UI elements so they don't bleed into Innings 1!
+            document.getElementById('target-container').classList.add('hidden');
+            document.getElementById('req-container').classList.add('hidden');
+            document.getElementById('chase-equation-container').classList.add('hidden');
 
             isProcessing = false;
 
