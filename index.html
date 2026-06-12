@@ -534,8 +534,9 @@
                 matchData.battingTeam = matchData.toss.winner === 'A' ? 'B' : 'A';
             }
             document.getElementById('header-match-status').classList.remove('hidden');
-            document.getElementById('max-overs-display').innerText = matchData.maxOvers === 999 ? '' : `/${matchData.maxOvers}`;
             
+            // THE BUG IS GONE: I removed the line that was crashing the app here!
+
             persistActiveMatch(); // Auto-save starts here!
             switchView('view-match');
             openModal('OPENING_PLAYERS');
