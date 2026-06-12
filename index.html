@@ -1134,12 +1134,7 @@
             // Route back to squads so user can quickly verify/edit the playing XI
             goToSquadSetup();
         }
-
-            // Route back to squads so user can quickly verify/edit the playing XI
-            goToSquadSetup();
-        }
-
-        function swapStrike(manual = true) {
+       function swapStrike(manual = true) {
             if(manual && isLocked()) return;
             if(manual) saveState();
             const temp = matchData.strikerIdx;
