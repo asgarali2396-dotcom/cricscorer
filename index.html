@@ -1098,36 +1098,50 @@
         }
 
         // ================= REMATCH LOGIC =================
-        // ================= REMATCH LOGIC =================
         function triggerRematch() {
-            // FIX: Hide the "Match Complete" overlay from the previous game!
+            // Hide the match over overlay explicitly
             document.getElementById('match-over-overlay').classList.add('hidden');
             document.getElementById('match-over-overlay').classList.remove('flex');
-            
-            // Safety unlock
-            isProcessing = false; 
+            document.getElementById('header-match-status').classList.add('hidden');
 
-            // Keep the teams, format, and max overs, but reset the game state
-            matchData.innings = 1;
-            matchData.score = { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 };
-            matchData.partnership = { runs: 0, balls: 0 }; 
-            matchData.overLog = [];
-            matchData.history = []; 
-            matchData.testHistory = { A: [], B: [] };
-            matchData.inningsData = [];
-            matchData.matchIsOver = false;
-            matchData.isSuperOver = false;
-            matchData.savedToHistory = false;
-            matchData.currentInningsSaved = false;
-            matchData.target = null;
-            matchData.toss = { caller: null, call: null, winner: null, decision: null };
-            matchData.strikerIdx = null; matchData.nonStrikerIdx = null; matchData.bowlerIdx = null;
+            isProcessing = false;
 
+            // 1. Safely copy the important settings before wiping
+            const savedFormat = matchData.format;
+            const savedOvers = matchData.maxOvers;
+            const savedTeamSize = matchData.teamSize;
+            const savedTeamAName = matchData.teams.A.name;
+            const savedTeamBName = matchData.teams.B.name;
+            const savedTeamAPlayers = matchData.teams.A.players.map(p => p.name);
+            const savedTeamBPlayers = matchData.teams.B.players.map(p => p.name);
+
+            // 2. NUCLEAR WIPE - Build a completely fresh state
+            matchData = {
+                format: savedFormat, maxOvers: savedOvers, teamSize: savedTeamSize, matchIsOver: false, isSuperOver: false,
+                teams: {
+                    A: { name: savedTeamAName, players: [] },
+                    B: { name: savedTeamBName, players: [] }
+                },
+                toss: { caller: null, call: null, winner: null, decision: null },
+                battingTeam: 'A', bowlingTeam: 'B', innings: 1, target: null,
+                score: { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 }, 
+                partnership: { runs: 0, balls: 0 }, 
+                strikerIdx: null, nonStrikerIdx: null, bowlerIdx: null,
+                overLog: [], history: [], modalState: '', pendingExtra: null,
+                needsNewBowler: false, pendingOverEndSwap: false,
+                savedToHistory: false, currentInningsSaved: false, firstInningsData: null,
+                testHistory: { A: [], B: [] }, inningsData: [] 
+            };
+
+            // 3. Rebuild the players with clean slates
             ['A', 'B'].forEach(teamKey => {
-                matchData.teams[teamKey].players.forEach(p => {
-                    p.runs = 0; p.balls = 0; p.fours = 0; p.sixes = 0;
-                    p.isOut = false; p.hasBatted = false; p.dismissalText = '';
-                    p.bowlRuns = 0; p.bowlBalls = 0; p.bowlWickets = 0;
+                const names = teamKey === 'A' ? savedTeamAPlayers : savedTeamBPlayers;
+                names.forEach(name => {
+                    matchData.teams[teamKey].players.push({
+                        name: name,
+                        runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, hasBatted: false, dismissalText: '',
+                        bowlRuns: 0, bowlBalls: 0, bowlWickets: 0
+                    });
                 });
             });
 
