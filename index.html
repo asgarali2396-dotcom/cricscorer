@@ -1098,7 +1098,15 @@
         }
 
         // ================= REMATCH LOGIC =================
+        // ================= REMATCH LOGIC =================
         function triggerRematch() {
+            // FIX: Hide the "Match Complete" overlay from the previous game!
+            document.getElementById('match-over-overlay').classList.add('hidden');
+            document.getElementById('match-over-overlay').classList.remove('flex');
+            
+            // Safety unlock
+            isProcessing = false; 
+
             // Keep the teams, format, and max overs, but reset the game state
             matchData.innings = 1;
             matchData.score = { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 };
@@ -1122,6 +1130,10 @@
                     p.bowlRuns = 0; p.bowlBalls = 0; p.bowlWickets = 0;
                 });
             });
+
+            // Route back to squads so user can quickly verify/edit the playing XI
+            goToSquadSetup();
+        }
 
             // Route back to squads so user can quickly verify/edit the playing XI
             goToSquadSetup();
