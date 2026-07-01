@@ -186,12 +186,19 @@
                         <span class="text-amber-400 font-bold text-lg tracking-wide" id="chase-equation"></span>
                     </div>
 
+
                     <div class="mt-6 flex flex-wrap gap-6 text-sm border-t border-indigo-700 pt-4 relative z-10">
                         <div><span class="text-indigo-300">CRR:</span> <span id="crr" class="font-bold">0.00</span></div>
                         <div><span class="text-emerald-400 font-bold"><i class="fas fa-handshake mr-1"></i> P'SHIP:</span> <span id="partnership-stats" class="font-bold">0 (0)</span></div>
                         <div id="req-container" class="hidden"><span class="text-indigo-300">REQ:</span> <span id="rrr" class="font-bold">-</span></div>
                         <div id="target-container" class="hidden ml-auto"><span class="text-amber-400 font-bold tracking-wide bg-slate-900/50 px-3 py-1 rounded">TARGET: <span id="target-score" class="text-lg"></span></span></div>
                     </div>
+                </div>
+
+                <!-- Test Match Summary Box -->
+                <div id="test-match-summary" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Test Match Summary</h4>
+                    <div id="test-summary-content" class="text-sm font-medium text-slate-700 space-y-1"></div>
                 </div>
 
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -221,7 +228,7 @@
                     <i class="fas fa-trophy text-6xl text-amber-400 mb-4"></i>
                     <h3 class="text-xl font-bold text-slate-300 uppercase tracking-widest mb-2">Match Complete</h3>
                     <p id="match-result-text" class="text-white font-black text-2xl leading-tight text-emerald-400 mb-6"></p>
-                    <button onclick="showScorecard()" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg transition w-full uppercase tracking-wider text-sm"><i class="fas fa-chart-bar mr-2"></i> View Full Scorecard</button>
+                    <button onclick="showScorecard()" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg transition w-full uppercase tracking-wider text-sm"><i class="fas fa-chart-bar mr-2"></i> View Final Scorecard</button>
                 </div>
 
                 <h3 class="text-slate-400 text-sm font-bold uppercase tracking-widest mb-4 border-b border-slate-600 pb-2">Scoring Panel</h3>
@@ -281,8 +288,12 @@
                 <div id="dynamic-scorecard-container" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
             </div>
 
-            <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center">
+            <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center" id="rematch-buttons">
                 <button onclick="triggerRematch()" class="px-8 py-4 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition shadow-lg w-full md:w-auto"><i class="fas fa-redo-alt mr-2"></i> Rematch (Same Squads)</button>
+            </div>
+            
+            <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center hidden" id="next-innings-btn">
+                <button onclick="startNextInnings()" class="px-8 py-4 bg-emerald-600 text-white font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition shadow-lg w-full md:w-auto">Start Next Innings <i class="fas fa-arrow-right ml-2"></i></button>
             </div>
         </div>
     </main>
@@ -308,11 +319,11 @@
         let isProcessing = false; 
 
         let matchData = {
-            format: 'T20', maxOvers: 20, teamSize: 11, matchIsOver: false, isSuperOver: false,
+            format: 'T20', maxOvers: 20, teamSize: 11, matchIsOver: false, isSuperOver: false, followOnEnforced: false,
             teams: { A: { name: '', players: [] }, B: { name: '', players: [] } },
             toss: { caller: null, call: null, winner: null, decision: null },
             battingTeam: 'A', bowlingTeam: 'B', innings: 1, target: null,
-            score: { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 }, 
+            score: { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0, bowlerRunsThisOver: 0 }, 
             partnership: { runs: 0, balls: 0 }, 
             strikerIdx: null, nonStrikerIdx: null, bowlerIdx: null,
             overLog: [], history: [], modalState: '', pendingExtra: null,
@@ -322,9 +333,8 @@
             inningsData: [] 
         };
 
-        // ================= NEW: AUTO-SAVE & RECOVERY LOGIC =================
+        // ================= AUTO-SAVE & RECOVERY LOGIC =================
         function persistActiveMatch() {
-            // Only save if a match is actively happening and not finished
             if (!matchData.matchIsOver && matchData.toss.decision !== null) {
                 localStorage.setItem('jafarCricActiveMatch', JSON.stringify(matchData));
             }
@@ -343,7 +353,6 @@
                 Object.assign(matchData, JSON.parse(savedMatch));
                 document.getElementById('recovery-modal').classList.add('hidden');
                 
-                // Route user to the exact screen they were on
                 if (matchData.toss.decision) {
                     switchView('view-match');
                     updateDashboard();
@@ -356,11 +365,10 @@
             }
         }
 
-       function discardMatch() {
+        function discardMatch() {
             localStorage.removeItem('jafarCricActiveMatch');
             document.getElementById('recovery-modal').classList.add('hidden');
             
-            // FIX: Clean up any leftover UI from the discarded match
             document.getElementById('target-container').classList.add('hidden');
             document.getElementById('req-container').classList.add('hidden');
             document.getElementById('chase-equation-container').classList.add('hidden');
@@ -368,9 +376,7 @@
             switchView('view-setup');
         }
 
-        // Run recovery check instantly when script loads
         checkRecoveryOnLoad();
-        // ===================================================================
 
         function switchView(viewId) {
             ['view-setup', 'view-squads', 'view-toss', 'view-match', 'view-scorecard', 'view-history'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -449,7 +455,6 @@
             const generateInputs = (teamKey) => {
                 let html = '';
                 for(let i=0; i<matchData.teamSize; i++) {
-                    // If returning via Rematch, populate the existing names
                     const existingName = matchData.teams[teamKey] && matchData.teams[teamKey].players[i] ? matchData.teams[teamKey].players[i].name : '';
                     const valueAttr = existingName && !existingName.startsWith('Player ') ? `value="${existingName}"` : '';
                     html += `<input type="text" id="player-${teamKey}-${i}" list="saved-players" class="w-full p-2 text-sm border border-slate-200 rounded focus:border-indigo-500 outline-none" placeholder="Player ${i+1}" ${valueAttr}>`;
@@ -475,7 +480,7 @@
                     matchData.teams[teamKey].players.push({
                         name: finalName,
                         runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, hasBatted: false, dismissalText: '',
-                        bowlRuns: 0, bowlBalls: 0, bowlWickets: 0
+                        bowlRuns: 0, bowlBalls: 0, bowlWickets: 0, maidens: 0
                     });
 
                     if (inputVal !== "" && !savedPlayers.includes(inputVal)) {
@@ -487,7 +492,6 @@
 
             if (newPlayersAdded) localStorage.setItem('jafarCricPlayers', JSON.stringify(savedPlayers));
             
-            // Reset toss UI just in case it's a rematch
             document.getElementById('toss-step-2').classList.add('hidden');
             document.getElementById('toss-step-1').classList.remove('hidden');
             document.getElementById('toss-call-buttons').classList.remove('hidden');
@@ -510,10 +514,8 @@
             const coin = document.getElementById('the-coin');
             const resultIsHeads = Math.random() < 0.5; 
             
-            // Reset classes for rematches
             coin.classList.remove('spin-heads', 'spin-tails');
             
-            // Small timeout to allow browser to register the class removal before adding it back
             setTimeout(() => {
                 if (resultIsHeads) coin.classList.add('spin-heads');
                 else coin.classList.add('spin-tails');
@@ -541,9 +543,7 @@
             }
             document.getElementById('header-match-status').classList.remove('hidden');
             
-            // THE BUG IS GONE: I removed the line that was crashing the app here!
-
-            persistActiveMatch(); // Auto-save starts here!
+            persistActiveMatch(); 
             switchView('view-match');
             openModal('OPENING_PLAYERS');
         }
@@ -557,7 +557,7 @@
 
         function openModal(state) {
             matchData.modalState = state;
-            persistActiveMatch(); // Save modal state
+            persistActiveMatch(); 
 
             const modal = document.getElementById('selection-modal');
             const title = document.getElementById('modal-title');
@@ -744,6 +744,7 @@
                 if (extraType === 'WD') {
                     const totalWides = 1 + physicalRuns;
                     matchData.score.runs += totalWides;
+                    matchData.score.bowlerRunsThisOver += totalWides; // Maiden Breaker
                     matchData.partnership.runs += totalWides;
                     getBowlTeam()[matchData.bowlerIdx].bowlRuns += totalWides;
                     logText = totalWides + 'WD';
@@ -752,6 +753,7 @@
                 else if (extraType === 'NB') {
                     const totalRuns = 1 + physicalRuns;
                     matchData.score.runs += totalRuns;
+                    matchData.score.bowlerRunsThisOver += totalRuns; // Maiden Breaker
                     matchData.partnership.runs += totalRuns;
                     getBowlTeam()[matchData.bowlerIdx].bowlRuns += totalRuns;
                     
@@ -818,6 +820,7 @@
             getBowlTeam()[matchData.bowlerIdx].bowlBalls += 1;
 
             matchData.score.runs += actualRuns;
+            matchData.score.bowlerRunsThisOver += actualRuns; // Maiden Breaker Tracker
             matchData.score.validBalls += 1;
             matchData.score.ballsThisOver += 1; 
             
@@ -857,7 +860,13 @@
                 isProcessing = true;
                 setTimeout(() => {
                     if (overEnded) {
+                        // Core Maiden Validation
+                        if (matchData.score.bowlerRunsThisOver === 0) {
+                            let bowler = getBowlTeam()[matchData.bowlerIdx];
+                            bowler.maidens = (bowler.maidens || 0) + 1;
+                        }
                         matchData.score.ballsThisOver = 0; 
+                        matchData.score.bowlerRunsThisOver = 0; 
                     }
 
                     if (overEnded && matchData.maxOvers !== 999 && (matchData.score.validBalls / 6) >= matchData.maxOvers) {
@@ -901,7 +910,7 @@
 
         function resetForNextInnings() {
             matchData.innings += 1;
-            matchData.score = { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 };
+            matchData.score = { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0, bowlerRunsThisOver: 0 };
             matchData.partnership = { runs: 0, balls: 0 }; 
             matchData.overLog = [];
             matchData.history = []; 
@@ -912,13 +921,13 @@
                 matchData.teams[teamKey].players.forEach(p => {
                     p.runs = 0; p.balls = 0; p.fours = 0; p.sixes = 0;
                     p.isOut = false; p.hasBatted = false; p.dismissalText = '';
-                    p.bowlRuns = 0; p.bowlBalls = 0; p.bowlWickets = 0;
+                    p.bowlRuns = 0; p.bowlBalls = 0; p.bowlWickets = 0; p.maidens = 0;
                 });
             });
             persistActiveMatch();
         }
 
-        // TEST MATCH CONTROLS
+        // ================= MATCH PROGRESSION & TEST STATE TRIGGERS =================
         function declareInnings() {
             if (isLocked()) return;
             if (confirm("Are you sure the batting captain wants to declare this innings?")) {
@@ -933,122 +942,102 @@
             }
         }
 
-        // MATCH PROGRESSION
         function triggerInningsTransition(isDeclared = false) {
             saveInningsSnapshot(); 
 
             if (matchData.format === 'TEST') {
                 matchData.testHistory[matchData.battingTeam].push(matchData.score.runs);
-                if (matchData.innings < 4) {
-                    if (matchData.innings === 3) {
-                        let currentTeamTotal = matchData.testHistory[matchData.battingTeam].reduce((a,b) => a+b, 0);
-                        let otherTeamFirstInnings = matchData.testHistory[matchData.bowlingTeam][0];
-                        if (!isDeclared && currentTeamTotal < otherTeamFirstInnings) {
-                            let diff = otherTeamFirstInnings - currentTeamTotal;
-                            endMatch(`${matchData.teams[matchData.bowlingTeam].name} Won by an innings and ${diff} runs!`);
-                            return;
+                
+                if (matchData.innings === 1) {
+                    showMidMatchScorecard();
+                } 
+                else if (matchData.innings === 2) {
+                    let team1Total = matchData.testHistory[matchData.bowlingTeam][0];
+                    let team2Total = matchData.testHistory[matchData.battingTeam][0];
+                    let lead = team1Total - team2Total;
+                    
+                    if (lead >= 200 && !isDeclared) {
+                        if (confirm(`Team ${matchData.teams[matchData.bowlingTeam].name} leads by ${lead} runs! Does the captain want to enforce the Follow-On?`)) {
+                            matchData.followOnEnforced = true;
+                        }
+                    }
+                    showMidMatchScorecard();
+                } 
+                else if (matchData.innings === 3) {
+                    if (matchData.followOnEnforced) {
+                        let teamA_inn1 = matchData.testHistory[matchData.bowlingTeam][0];
+                        let teamB_total = matchData.testHistory[matchData.battingTeam][0] + matchData.testHistory[matchData.battingTeam][1];
+                        
+                        if (teamB_total <= teamA_inn1) {
+                            let diff = teamA_inn1 - teamB_total;
+                            return endMatch(`${matchData.teams[matchData.bowlingTeam].name} Won by an innings and ${diff} runs!`);
                         } else {
-                            matchData.target = (currentTeamTotal - otherTeamFirstInnings) + 1;
-                            alert(`Innings ${isDeclared ? 'Declared' : 'Over'}! Target for ${matchData.teams[matchData.bowlingTeam].name} is ${matchData.target}`);
+                            matchData.target = (teamB_total - teamA_inn1) + 1;
+                            showMidMatchScorecard();
                         }
                     } else {
-                        alert(`Innings ${matchData.innings} ${isDeclared ? 'Declared' : 'Over'}! Next team to bat.`);
+                        let teamB_inn1 = matchData.testHistory[matchData.bowlingTeam][0];
+                        let teamA_total = matchData.testHistory[matchData.battingTeam][0] + matchData.testHistory[matchData.battingTeam][1];
+                        
+                        matchData.target = (teamA_total - teamB_inn1) + 1;
+                        showMidMatchScorecard();
                     }
-
-                    const temp = matchData.battingTeam;
-                    matchData.battingTeam = matchData.bowlingTeam;
-                    matchData.bowlingTeam = temp;
+                } 
+                else if (matchData.innings === 4) {
+                    let bowlingTeamTotal;
+                    let battingTeamTotal = matchData.testHistory[matchData.battingTeam][0] + matchData.testHistory[matchData.battingTeam][1];
                     
-                    resetForNextInnings(); 
-                    
-                    if (matchData.innings === 4) {
-                        document.getElementById('target-container').classList.remove('hidden');
-                        document.getElementById('req-container').classList.remove('hidden');
+                    if (matchData.followOnEnforced) {
+                        bowlingTeamTotal = matchData.testHistory[matchData.bowlingTeam][0] + matchData.testHistory[matchData.bowlingTeam][1];
+                    } else {
+                        bowlingTeamTotal = matchData.testHistory[matchData.bowlingTeam][0] + matchData.testHistory[matchData.bowlingTeam][1];
                     }
-                    updateDashboard();
-                    openModal('OPENING_PLAYERS');
-                } else {
-                    let team4Total = matchData.testHistory[matchData.battingTeam].reduce((a,b) => a+b, 0);
-                    let team3Total = matchData.testHistory[matchData.bowlingTeam].reduce((a,b) => a+b, 0);
-                    if (team4Total === team3Total) endMatch("Match Tied!");
+                    
+                    if (battingTeamTotal === bowlingTeamTotal) endMatch("Match Tied!");
                     else {
-                        let diff = team3Total - team4Total;
+                        let diff = bowlingTeamTotal - battingTeamTotal;
                         endMatch(`${matchData.teams[matchData.bowlingTeam].name} Won by ${diff} runs!`);
                     }
                 }
-                return;
-            }
-
-            if (matchData.innings === 1) {
-                alert(`Innings Over! Target for ${matchData.teams[matchData.bowlingTeam].name} is ${matchData.score.runs + 1}`);
-                matchData.target = matchData.score.runs + 1; 
-
-                const temp = matchData.battingTeam;
-                matchData.battingTeam = matchData.bowlingTeam;
-                matchData.bowlingTeam = temp;
-                
-                resetForNextInnings();
-                
-                document.getElementById('target-container').classList.remove('hidden');
-                document.getElementById('req-container').classList.remove('hidden');
-                updateDashboard();
-                openModal('OPENING_PLAYERS');
             } 
-            else if (matchData.innings === 2 && !matchData.isSuperOver) {
-                if (matchData.score.runs === matchData.target - 1) {
-                    alert("Scores are level! MATCH TIED. Commencing SUPER OVER!");
-                    matchData.isSuperOver = true;
-                    matchData.maxOvers = 1;
-                    matchData.target = null;
-                    resetForNextInnings(); 
-                    
-                    document.getElementById('target-container').classList.add('hidden');
-                    document.getElementById('req-container').classList.add('hidden');
-                    updateDashboard();
-                    openModal('OPENING_PLAYERS');
-                } else {
-                    let resultText = matchData.score.runs < matchData.target - 1 ? `${matchData.teams[matchData.bowlingTeam].name} Won the match!` : "Match Complete!";
+            else {
+                if (matchData.innings === 1) {
+                    matchData.target = matchData.score.runs + 1; 
+                    showMidMatchScorecard();
+                } 
+                else if (matchData.innings === 2 && !matchData.isSuperOver) {
+                    if (matchData.score.runs === matchData.target - 1) {
+                        alert("Scores are level! MATCH TIED. Commencing SUPER OVER!");
+                        matchData.isSuperOver = true;
+                        matchData.maxOvers = 1;
+                        matchData.target = null;
+                        showMidMatchScorecard(); 
+                    } else {
+                        let resultText = matchData.score.runs < matchData.target - 1 ? `${matchData.teams[matchData.bowlingTeam].name} Won the match!` : "Match Complete!";
+                        endMatch(resultText);
+                    }
+                } 
+                else if (matchData.innings === 3) {
+                    matchData.target = matchData.score.runs + 1; 
+                    showMidMatchScorecard();
+                } 
+                else if (matchData.innings === 4) {
+                    let resultText = "Super Over Tied! (Match Drawn)";
+                    if (matchData.score.runs < matchData.target - 1) {
+                        resultText = `${matchData.teams[matchData.bowlingTeam].name} Won the Super Over!`;
+                    }
                     endMatch(resultText);
                 }
-            } 
-            else if (matchData.innings === 3) {
-                alert(`Super Over Innings 1 Over! Target is ${matchData.score.runs + 1}`);
-                matchData.target = matchData.score.runs + 1; 
-
-                const temp = matchData.battingTeam;
-                matchData.battingTeam = matchData.bowlingTeam;
-                matchData.bowlingTeam = temp;
-                
-                resetForNextInnings();
-                
-                document.getElementById('target-container').classList.remove('hidden');
-                document.getElementById('req-container').classList.remove('hidden');
-                updateDashboard();
-                openModal('OPENING_PLAYERS');
-            } 
-            else if (matchData.innings === 4) {
-                let resultText = "Super Over Tied! (Match Drawn)";
-                if (matchData.score.runs < matchData.target - 1) {
-                    resultText = `${matchData.teams[matchData.bowlingTeam].name} Won the Super Over!`;
-                }
-                endMatch(resultText);
             }
         }
 
         function checkMatchWinCondition() {
-            if (matchData.format === 'TEST' && matchData.innings === 4 && matchData.target) {
-                if (matchData.score.runs >= matchData.target) {
+            if (matchData.target && matchData.score.runs >= matchData.target) {
+                if ((matchData.format === 'TEST' && matchData.innings === 4) || 
+                    (matchData.format !== 'TEST' && (matchData.innings === 2 || matchData.innings === 4))) {
                     let wicketsLeft = (matchData.teamSize - 1) - matchData.score.wickets;
                     endMatch(`${matchData.teams[matchData.battingTeam].name} Won by ${wicketsLeft} wickets!`);
                     return true;
-                }
-            } 
-            else if (matchData.format !== 'TEST') {
-                if ((matchData.innings === 2 && !matchData.isSuperOver) || (matchData.innings === 4 && matchData.isSuperOver)) {
-                    if (matchData.target && matchData.score.runs >= matchData.target) {
-                        endMatch(`${matchData.teams[matchData.battingTeam].name} Won!`);
-                        return true;
-                    }
                 }
             }
             return false;
@@ -1059,7 +1048,6 @@
             saveInningsSnapshot(); 
             matchData.matchIsOver = true;
             
-            // WIPE ACTIVE MATCH FROM LOCAL STORAGE SO RECOVERY DOESN'T TRIGGER LATER
             localStorage.removeItem('jafarCricActiveMatch');
             
             document.getElementById('match-over-overlay').classList.remove('hidden');
@@ -1104,21 +1092,66 @@
             }
         }
 
-     // ================= REMATCH LOGIC =================
+        // ================= SCORECARD & NEXT INNINGS LOGIC =================
+        function showMidMatchScorecard() {
+            document.getElementById('scorecard-result').innerText = `End of Innings ${matchData.innings}`;
+            document.getElementById('rematch-buttons').classList.add('hidden');
+            document.getElementById('mom-container').classList.add('hidden');
+            document.getElementById('next-innings-btn').classList.remove('hidden');
+            
+            generateScorecardHTML();
+            switchView('view-scorecard');
+        }
+
+        function showScorecard() {
+            document.getElementById('scorecard-result').innerText = document.getElementById('match-result-text').innerText;
+            document.getElementById('rematch-buttons').classList.remove('hidden');
+            document.getElementById('next-innings-btn').classList.add('hidden');
+
+            const mom = calculateManOfTheMatch();
+            if (mom) {
+                document.getElementById('mom-name').innerText = `${mom.name} (${mom.team})`;
+                document.getElementById('mom-stats').innerText = `Runs: ${mom.runs} | Wickets: ${mom.wickets}`;
+                document.getElementById('mom-container').classList.remove('hidden');
+            }
+
+            generateScorecardHTML();
+            switchView('view-scorecard');
+        }
+
+        function startNextInnings() {
+            // Determine who bats next based on follow-on rules
+            if (matchData.format === 'TEST' && matchData.innings === 2 && matchData.followOnEnforced) {
+                // Team B stays batting, do not swap.
+            } else {
+                const temp = matchData.battingTeam;
+                matchData.battingTeam = matchData.bowlingTeam;
+                matchData.bowlingTeam = temp;
+            }
+
+            resetForNextInnings();
+
+            if (matchData.target) {
+                document.getElementById('target-container').classList.remove('hidden');
+                document.getElementById('req-container').classList.remove('hidden');
+            }
+
+            switchView('view-match');
+            updateDashboard();
+            openModal('OPENING_PLAYERS');
+        }
+
         function triggerRematch() {
-            // Hide the match over overlay explicitly
             document.getElementById('match-over-overlay').classList.add('hidden');
             document.getElementById('match-over-overlay').classList.remove('flex');
             document.getElementById('header-match-status').classList.add('hidden');
 
-            // BUG FIX: Hide the target and REQ UI elements so they don't bleed into Innings 1!
             document.getElementById('target-container').classList.add('hidden');
             document.getElementById('req-container').classList.add('hidden');
             document.getElementById('chase-equation-container').classList.add('hidden');
 
             isProcessing = false;
 
-            // 1. Safely copy the important settings before wiping
             const savedFormat = matchData.format;
             const savedOvers = matchData.maxOvers;
             const savedTeamSize = matchData.teamSize;
@@ -1127,16 +1160,12 @@
             const savedTeamAPlayers = matchData.teams.A.players.map(p => p.name);
             const savedTeamBPlayers = matchData.teams.B.players.map(p => p.name);
 
-            // 2. NUCLEAR WIPE - Build a completely fresh state
             matchData = {
-                format: savedFormat, maxOvers: savedOvers, teamSize: savedTeamSize, matchIsOver: false, isSuperOver: false,
-                teams: {
-                    A: { name: savedTeamAName, players: [] },
-                    B: { name: savedTeamBName, players: [] }
-                },
+                format: savedFormat, maxOvers: savedOvers, teamSize: savedTeamSize, matchIsOver: false, isSuperOver: false, followOnEnforced: false,
+                teams: { A: { name: savedTeamAName, players: [] }, B: { name: savedTeamBName, players: [] } },
                 toss: { caller: null, call: null, winner: null, decision: null },
                 battingTeam: 'A', bowlingTeam: 'B', innings: 1, target: null,
-                score: { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0 }, 
+                score: { runs: 0, wickets: 0, validBalls: 0, ballsThisOver: 0, bowlerRunsThisOver: 0 }, 
                 partnership: { runs: 0, balls: 0 }, 
                 strikerIdx: null, nonStrikerIdx: null, bowlerIdx: null,
                 overLog: [], history: [], modalState: '', pendingExtra: null,
@@ -1145,22 +1174,21 @@
                 testHistory: { A: [], B: [] }, inningsData: [] 
             };
 
-            // 3. Rebuild the players with clean slates
             ['A', 'B'].forEach(teamKey => {
                 const names = teamKey === 'A' ? savedTeamAPlayers : savedTeamBPlayers;
                 names.forEach(name => {
                     matchData.teams[teamKey].players.push({
                         name: name,
                         runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, hasBatted: false, dismissalText: '',
-                        bowlRuns: 0, bowlBalls: 0, bowlWickets: 0
+                        bowlRuns: 0, bowlBalls: 0, bowlWickets: 0, maidens: 0
                     });
                 });
             });
 
-            // Route back to squads so user can quickly verify/edit the playing XI
             goToSquadSetup();
         }
-       function swapStrike(manual = true) {
+
+        function swapStrike(manual = true) {
             if(manual && isLocked()) return;
             if(manual) saveState();
             const temp = matchData.strikerIdx;
@@ -1196,7 +1224,6 @@
         function updateDashboard() {
             if (matchData.strikerIdx === null || matchData.bowlerIdx === null || matchData.nonStrikerIdx === null) return;
             
-            // ALWAYS SAVE TO DISK ON EVERY RENDER
             persistActiveMatch();
 
             const batTeam = getBatTeam();
@@ -1212,10 +1239,23 @@
                 magicBanner.classList.add('hidden');
             }
 
+            // TEST MATCH UI HUB
             const testControls = document.getElementById('test-controls');
+            const testSummaryDiv = document.getElementById('test-match-summary');
+            
             if (matchData.format === 'TEST') {
                 testControls.classList.remove('hidden');
                 testControls.classList.add('grid');
+                
+                if (matchData.inningsData.length > 0) {
+                    testSummaryDiv.classList.remove('hidden');
+                    let summaryHTML = '';
+                    matchData.inningsData.forEach((inn, idx) => {
+                        summaryHTML += `<div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0"><span class="text-slate-600">${inn.battingTeamName} (Inn ${Math.ceil((idx+1)/2)})</span><span class="font-bold text-indigo-700">${inn.score}</span></div>`;
+                    });
+                    document.getElementById('test-summary-content').innerHTML = summaryHTML;
+                }
+
                 if (matchData.innings > 1 && !matchData.target) {
                     let batTeamTotal = matchData.testHistory[matchData.battingTeam].reduce((a,b)=>a+b, 0) + matchData.score.runs;
                     let bowlTeamTotal = matchData.testHistory[matchData.bowlingTeam].reduce((a,b)=>a+b, 0);
@@ -1227,6 +1267,7 @@
                 }
             } else {
                 if(testControls) { testControls.classList.add('hidden'); testControls.classList.remove('grid'); }
+                testSummaryDiv.classList.add('hidden');
             }
 
             document.getElementById('batting-team-name').innerText = `${matchData.teams[matchData.battingTeam].name} BATTING ${matchData.isSuperOver ? '(SUPER OVER)' : (matchData.format === 'TEST' ? `(INN ${matchData.innings})` : '')}`;
@@ -1276,7 +1317,7 @@
                 <tr class="bg-slate-50">
                     <td class="p-3 font-bold text-slate-700">${bowler.name}</td>
                     <td class="p-3 text-right">${formatOvers(bowler.bowlBalls)}</td>
-                    <td class="p-3 text-right">0</td>
+                    <td class="p-3 text-right">${bowler.maidens || 0}</td>
                     <td class="p-3 text-right">${bowler.bowlRuns}</td>
                     <td class="p-3 text-right font-bold text-rose-600">${bowler.bowlWickets}</td>
                     <td class="p-3 text-right text-slate-500">${calcEco(bowler.bowlRuns, bowler.bowlBalls)}</td>
@@ -1318,17 +1359,7 @@
             return bestPlayer;
         }
 
-        function showScorecard() {
-            switchView('view-scorecard');
-            document.getElementById('scorecard-result').innerText = document.getElementById('match-result-text').innerText;
-
-            const mom = calculateManOfTheMatch();
-            if (mom) {
-                document.getElementById('mom-name').innerText = `${mom.name} (${mom.team})`;
-                document.getElementById('mom-stats').innerText = `Runs: ${mom.runs} | Wickets: ${mom.wickets}`;
-                document.getElementById('mom-container').classList.remove('hidden');
-            }
-
+        function generateScorecardHTML() {
             let containerHtml = '';
             matchData.inningsData.forEach(inning => {
                 let batHtml = '';
@@ -1353,7 +1384,7 @@
                 let bowlHtml = '';
                 inning.bowlers.forEach(p => {
                     if (p.bowlBalls > 0) {
-                        bowlHtml += `<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="py-2 font-medium">${p.name}</td><td class="text-right">${formatOvers(p.bowlBalls)}</td><td class="text-right">0</td><td class="text-right">${p.bowlRuns}</td><td class="text-right font-bold text-rose-600">${p.bowlWickets}</td><td class="text-right text-slate-500">${calcEco(p.bowlRuns, p.bowlBalls)}</td></tr>`;
+                        bowlHtml += `<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="py-2 font-medium">${p.name}</td><td class="text-right">${formatOvers(p.bowlBalls)}</td><td class="text-right">${p.maidens || 0}</td><td class="text-right">${p.bowlRuns}</td><td class="text-right font-bold text-rose-600">${p.bowlWickets}</td><td class="text-right text-slate-500">${calcEco(p.bowlRuns, p.bowlBalls)}</td></tr>`;
                     }
                 });
                 if(!bowlHtml) bowlHtml = '<tr><td colspan="6" class="py-4 text-center italic text-slate-400">Did not bowl</td></tr>';
