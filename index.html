@@ -186,7 +186,6 @@
                         <span class="text-amber-400 font-bold text-lg tracking-wide" id="chase-equation"></span>
                     </div>
 
-
                     <div class="mt-6 flex flex-wrap gap-6 text-sm border-t border-indigo-700 pt-4 relative z-10">
                         <div><span class="text-indigo-300">CRR:</span> <span id="crr" class="font-bold">0.00</span></div>
                         <div><span class="text-emerald-400 font-bold"><i class="fas fa-handshake mr-1"></i> P'SHIP:</span> <span id="partnership-stats" class="font-bold">0 (0)</span></div>
@@ -195,9 +194,9 @@
                     </div>
                 </div>
 
-                <!-- Test Match Summary Box -->
+                <!-- Test Match Dashboard Analytics Box -->
                 <div id="test-match-summary" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                    <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Test Match Summary</h4>
+                    <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 border-b pb-1">Test Timeline Center</h4>
                     <div id="test-summary-content" class="text-sm font-medium text-slate-700 space-y-1"></div>
                 </div>
 
@@ -235,7 +234,7 @@
                 
                 <div id="keypad-area" class="flex-1 flex flex-col">
                     <div id="magic-ball-banner" class="hidden bg-gradient-to-r from-amber-400 to-amber-600 text-white font-black text-center py-2 px-4 rounded-xl mb-4 shadow-lg animate-pulse uppercase tracking-widest">
-                        <i class="fas fa-star mr-2"></i> Magic Ball Active - Runs Doubled! <i class="fas fa-star ml-2"></i>
+                        <i class="fas fa-star mr-Star"></i> Magic Ball Active - Runs Doubled! <i class="fas fa-star ml-2"></i>
                     </div>
 
                     <div id="test-controls" class="hidden grid-cols-2 gap-3 mb-6">
@@ -744,7 +743,7 @@
                 if (extraType === 'WD') {
                     const totalWides = 1 + physicalRuns;
                     matchData.score.runs += totalWides;
-                    matchData.score.bowlerRunsThisOver += totalWides; // Maiden Breaker
+                    matchData.score.bowlerRunsThisOver += totalWides; 
                     matchData.partnership.runs += totalWides;
                     getBowlTeam()[matchData.bowlerIdx].bowlRuns += totalWides;
                     logText = totalWides + 'WD';
@@ -753,7 +752,7 @@
                 else if (extraType === 'NB') {
                     const totalRuns = 1 + physicalRuns;
                     matchData.score.runs += totalRuns;
-                    matchData.score.bowlerRunsThisOver += totalRuns; // Maiden Breaker
+                    matchData.score.bowlerRunsThisOver += totalRuns; 
                     matchData.partnership.runs += totalRuns;
                     getBowlTeam()[matchData.bowlerIdx].bowlRuns += totalRuns;
                     
@@ -820,7 +819,7 @@
             getBowlTeam()[matchData.bowlerIdx].bowlBalls += 1;
 
             matchData.score.runs += actualRuns;
-            matchData.score.bowlerRunsThisOver += actualRuns; // Maiden Breaker Tracker
+            matchData.score.bowlerRunsThisOver += actualRuns; 
             matchData.score.validBalls += 1;
             matchData.score.ballsThisOver += 1; 
             
@@ -860,7 +859,6 @@
                 isProcessing = true;
                 setTimeout(() => {
                     if (overEnded) {
-                        // Core Maiden Validation
                         if (matchData.score.bowlerRunsThisOver === 0) {
                             let bowler = getBowlTeam()[matchData.bowlerIdx];
                             bowler.maidens = (bowler.maidens || 0) + 1;
@@ -901,6 +899,7 @@
                 battingTeamName: matchData.teams[matchData.battingTeam].name,
                 bowlingTeamName: matchData.teams[matchData.bowlingTeam].name,
                 score: `${matchData.score.runs}/${matchData.score.wickets} (${formatOvers(matchData.score.validBalls)})`,
+                validBalls: matchData.score.validBalls, 
                 batters: JSON.parse(JSON.stringify(matchData.teams[matchData.battingTeam].players)),
                 bowlers: JSON.parse(JSON.stringify(matchData.teams[matchData.bowlingTeam].players))
             });
@@ -1120,9 +1119,8 @@
         }
 
         function startNextInnings() {
-            // Determine who bats next based on follow-on rules
             if (matchData.format === 'TEST' && matchData.innings === 2 && matchData.followOnEnforced) {
-                // Team B stays batting, do not swap.
+                // Keep the batting sequence forced by the follow-on rule
             } else {
                 const temp = matchData.battingTeam;
                 matchData.battingTeam = matchData.bowlingTeam;
@@ -1239,7 +1237,7 @@
                 magicBanner.classList.add('hidden');
             }
 
-            // TEST MATCH UI HUB
+            // TEST MODE ANALYTICS HUD
             const testControls = document.getElementById('test-controls');
             const testSummaryDiv = document.getElementById('test-match-summary');
             
@@ -1247,14 +1245,22 @@
                 testControls.classList.remove('hidden');
                 testControls.classList.add('grid');
                 
+                // Advanced Day & Over Balance Matrix Calculations (90 Overs Per Day)
+                const pastMatchBalls = matchData.inningsData.reduce((sum, inn) => sum + (inn.validBalls || 0), 0);
+                const currentTotalMatchBalls = pastMatchBalls + matchData.score.validBalls;
+                const totalOversProcessed = Math.floor(currentTotalMatchBalls / 6);
+                const currentDayCalculated = Math.min(5, Math.floor(totalOversProcessed / 90) + 1);
+                const oversRemainingInDay = Math.max(0, 90 - (totalOversProcessed % 90));
+                
+                testSummaryDiv.classList.remove('hidden');
+                let summaryHTML = `<div class="bg-indigo-50 text-indigo-900 p-2 rounded-lg text-center font-bold mb-3">Day ${currentDayCalculated} | ${oversRemainingInDay} Overs Left Today</div>`;
+                
                 if (matchData.inningsData.length > 0) {
-                    testSummaryDiv.classList.remove('hidden');
-                    let summaryHTML = '';
-                    matchData.inningsData.forEach((inn, idx) => {
-                        summaryHTML += `<div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0"><span class="text-slate-600">${inn.battingTeamName} (Inn ${Math.ceil((idx+1)/2)})</span><span class="font-bold text-indigo-700">${inn.score}</span></div>`;
+                    matchData.inningsData.forEach((inn) => {
+                        summaryHTML += `<div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0"><span class="text-slate-600">${inn.title}</span><span class="font-bold text-indigo-700">${inn.score}</span></div>`;
                     });
-                    document.getElementById('test-summary-content').innerHTML = summaryHTML;
                 }
+                document.getElementById('test-summary-content').innerHTML = summaryHTML;
 
                 if (matchData.innings > 1 && !matchData.target) {
                     let batTeamTotal = matchData.testHistory[matchData.battingTeam].reduce((a,b)=>a+b, 0) + matchData.score.runs;
@@ -1281,15 +1287,23 @@
             if (matchData.target) {
                 document.getElementById('target-score').innerText = matchData.target;
                 const runsNeeded = Math.max(0, matchData.target - matchData.score.runs);
-                const ballsLeft = Math.max(0, (matchData.maxOvers * 6) - matchData.score.validBalls);
+                const ballsLeftLimited = Math.max(0, (matchData.maxOvers * 6) - matchData.score.validBalls);
                 
-                if (matchData.maxOvers !== 999) {
-                    const rrr = ballsLeft > 0 ? ((runsNeeded / ballsLeft) * 6).toFixed(2) : "0.00";
-                    document.getElementById('rrr').innerText = runsNeeded > 0 ? rrr : "-";
-                    document.getElementById('chase-equation').innerText = `Need ${runsNeeded} runs in ${ballsLeft} balls`;
+                if (matchData.format === 'TEST') {
+                    // Capped 5-day over pool countdown logic (5 Days x 90 Overs x 6 Deliveries = 2700 Balls total match limit)
+                    const pastMatchBalls = matchData.inningsData.reduce((sum, inn) => sum + (inn.validBalls || 0), 0);
+                    const currentTotalMatchBalls = pastMatchBalls + matchData.score.validBalls;
+                    const matchBallsRemaining = Math.max(0, 2700 - currentTotalMatchBalls);
+                    const oversRemainingInMatch = Math.floor(matchBallsRemaining / 6);
+                    const overBallsRemainder = matchBallsRemaining % 6;
+                    
+                    document.getElementById('rrr').innerText = matchBallsRemaining > 0 ? ((runsNeeded / matchBallsRemaining) * 6).toFixed(2) : "0.00";
+                    document.getElementById('chase-equation').innerText = `Need ${runsNeeded} runs in ${matchBallsRemaining} balls (${oversRemainingInMatch}.${overBallsRemainder} Match Overs remaining)`;
                     document.getElementById('chase-equation-container').classList.remove('hidden');
-                } else {
-                    document.getElementById('chase-equation').innerText = `Need ${runsNeeded} runs to win`;
+                } else if (matchData.maxOvers !== 999) {
+                    const rrr = ballsLeftLimited > 0 ? ((runsNeeded / ballsLeftLimited) * 6).toFixed(2) : "0.00";
+                    document.getElementById('rrr').innerText = runsNeeded > 0 ? rrr : "-";
+                    document.getElementById('chase-equation').innerText = `Need ${runsNeeded} runs in ${ballsLeftLimited} balls`;
                     document.getElementById('chase-equation-container').classList.remove('hidden');
                 }
             }
