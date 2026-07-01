@@ -82,6 +82,11 @@
                     <label class="block text-sm font-semibold text-slate-600 mb-2">Number of Overs</label>
                     <input type="number" id="custom-overs" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value="10" min="1">
                 </div>
+                <!-- NEW: Test Match Custom Overs Input -->
+                <div id="test-overs-container" class="hidden">
+                    <label class="block text-sm font-semibold text-slate-600 mb-2">Overs per Day (Test Match)</label>
+                    <input type="number" id="test-overs-per-day" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value="90" min="1">
+                </div>
                 <div>
                     <label class="block text-sm font-semibold text-slate-600 mb-2">Players per Team (8 - 15)</label>
                     <input type="number" id="team-size" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value="11" min="8" max="15">
@@ -234,7 +239,7 @@
                 
                 <div id="keypad-area" class="flex-1 flex flex-col">
                     <div id="magic-ball-banner" class="hidden bg-gradient-to-r from-amber-400 to-amber-600 text-white font-black text-center py-2 px-4 rounded-xl mb-4 shadow-lg animate-pulse uppercase tracking-widest">
-                        <i class="fas fa-star mr-Star"></i> Magic Ball Active - Runs Doubled! <i class="fas fa-star ml-2"></i>
+                        <i class="fas fa-star mr-2"></i> Magic Ball Active - Runs Doubled! <i class="fas fa-star ml-2"></i>
                     </div>
 
                     <div id="test-controls" class="hidden grid-cols-2 gap-3 mb-6">
@@ -318,7 +323,7 @@
         let isProcessing = false; 
 
         let matchData = {
-            format: 'T20', maxOvers: 20, teamSize: 11, matchIsOver: false, isSuperOver: false, followOnEnforced: false,
+            format: 'T20', maxOvers: 20, oversPerDay: 90, teamSize: 11, matchIsOver: false, isSuperOver: false, followOnEnforced: false,
             teams: { A: { name: '', players: [] }, B: { name: '', players: [] } },
             toss: { caller: null, call: null, winner: null, decision: null },
             battingTeam: 'A', bowlingTeam: 'B', innings: 1, target: null,
@@ -429,6 +434,7 @@
         function toggleCustomOvers() {
             const format = document.getElementById('match-format').value;
             document.getElementById('custom-overs-container').style.display = (format === 'CUSTOM' || format === 'TURF') ? 'block' : 'none';
+            document.getElementById('test-overs-container').style.display = (format === 'TEST') ? 'block' : 'none';
         }
 
         function goToSquadSetup() {
@@ -436,7 +442,10 @@
             
             if (matchData.format === 'T20') matchData.maxOvers = 20;
             else if (matchData.format === 'ODI') matchData.maxOvers = 50;
-            else if (matchData.format === 'TEST') matchData.maxOvers = 999;
+            else if (matchData.format === 'TEST') {
+                matchData.maxOvers = 999;
+                matchData.oversPerDay = parseInt(document.getElementById('test-overs-per-day').value) || 90;
+            }
             else matchData.maxOvers = parseInt(document.getElementById('custom-overs').value) || 10; 
 
             matchData.teamSize = parseInt(document.getElementById('team-size').value) || 11;
@@ -1152,6 +1161,7 @@
 
             const savedFormat = matchData.format;
             const savedOvers = matchData.maxOvers;
+            const savedOversPerDay = matchData.oversPerDay;
             const savedTeamSize = matchData.teamSize;
             const savedTeamAName = matchData.teams.A.name;
             const savedTeamBName = matchData.teams.B.name;
@@ -1159,7 +1169,7 @@
             const savedTeamBPlayers = matchData.teams.B.players.map(p => p.name);
 
             matchData = {
-                format: savedFormat, maxOvers: savedOvers, teamSize: savedTeamSize, matchIsOver: false, isSuperOver: false, followOnEnforced: false,
+                format: savedFormat, maxOvers: savedOvers, oversPerDay: savedOversPerDay, teamSize: savedTeamSize, matchIsOver: false, isSuperOver: false, followOnEnforced: false,
                 teams: { A: { name: savedTeamAName, players: [] }, B: { name: savedTeamBName, players: [] } },
                 toss: { caller: null, call: null, winner: null, decision: null },
                 battingTeam: 'A', bowlingTeam: 'B', innings: 1, target: null,
@@ -1245,12 +1255,13 @@
                 testControls.classList.remove('hidden');
                 testControls.classList.add('grid');
                 
-                // Advanced Day & Over Balance Matrix Calculations (90 Overs Per Day)
+                // Advanced Day & Over Balance Matrix Calculations using dynamic oversPerDay
+                const dailyOvers = matchData.oversPerDay || 90;
                 const pastMatchBalls = matchData.inningsData.reduce((sum, inn) => sum + (inn.validBalls || 0), 0);
                 const currentTotalMatchBalls = pastMatchBalls + matchData.score.validBalls;
                 const totalOversProcessed = Math.floor(currentTotalMatchBalls / 6);
-                const currentDayCalculated = Math.min(5, Math.floor(totalOversProcessed / 90) + 1);
-                const oversRemainingInDay = Math.max(0, 90 - (totalOversProcessed % 90));
+                const currentDayCalculated = Math.min(5, Math.floor(totalOversProcessed / dailyOvers) + 1);
+                const oversRemainingInDay = Math.max(0, dailyOvers - (totalOversProcessed % dailyOvers));
                 
                 testSummaryDiv.classList.remove('hidden');
                 let summaryHTML = `<div class="bg-indigo-50 text-indigo-900 p-2 rounded-lg text-center font-bold mb-3">Day ${currentDayCalculated} | ${oversRemainingInDay} Overs Left Today</div>`;
@@ -1290,10 +1301,12 @@
                 const ballsLeftLimited = Math.max(0, (matchData.maxOvers * 6) - matchData.score.validBalls);
                 
                 if (matchData.format === 'TEST') {
-                    // Capped 5-day over pool countdown logic (5 Days x 90 Overs x 6 Deliveries = 2700 Balls total match limit)
+                    // Capped 5-day over pool countdown logic using customized overs
+                    const dailyOvers = matchData.oversPerDay || 90;
+                    const maxMatchBalls = 5 * dailyOvers * 6; // Total limit for the entire match
                     const pastMatchBalls = matchData.inningsData.reduce((sum, inn) => sum + (inn.validBalls || 0), 0);
                     const currentTotalMatchBalls = pastMatchBalls + matchData.score.validBalls;
-                    const matchBallsRemaining = Math.max(0, 2700 - currentTotalMatchBalls);
+                    const matchBallsRemaining = Math.max(0, maxMatchBalls - currentTotalMatchBalls);
                     const oversRemainingInMatch = Math.floor(matchBallsRemaining / 6);
                     const overBallsRemainder = matchBallsRemaining % 6;
                     
